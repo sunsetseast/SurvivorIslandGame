@@ -4,6 +4,8 @@ class IdolSystem {
         this.gameManager = gameManager;
         this.idolsInPlay = 0;
         this.maxIdols = 2;
+        this.idolLocation = null;  // Will store the hiding spot that contains an idol
+        this.searchedSpots = new Set(); // Keep track of searched spots
     }
     
     /**
@@ -11,6 +13,29 @@ class IdolSystem {
      */
     initialize() {
         this.idolsInPlay = 0;
+        this.resetIdolLocations();
+    }
+    
+    /**
+     * Reset idol locations - called at game start and after an idol is played
+     */
+    resetIdolLocations() {
+        this.searchedSpots.clear();
+        
+        // Generate a random location for the idol to be hidden
+        const locations = ["Beach", "Jungle", "Camp", "Private Area"];
+        const selectedLocation = locations[Math.floor(Math.random() * locations.length)];
+        
+        // Get hiding spots for that location
+        const hidingSpots = this.getLocationHidingSpots(selectedLocation);
+        
+        // Select one random hiding spot
+        this.idolLocation = {
+            location: selectedLocation,
+            hidingSpot: hidingSpots[Math.floor(Math.random() * hidingSpots.length)]
+        };
+        
+        console.log("Idol hidden in:", this.idolLocation);
     }
     
     /**
@@ -117,35 +142,48 @@ class IdolSystem {
      * @param {string} hidingSpot - The specific hiding spot being searched
      */
     startIdolSearch(hidingSpot) {
-        // Calculate search success chance based on location and hiding spot
-        // Some hiding spots are more likely to contain idols
-        let searchChance = 0.05; // Base 5% chance
+        // Get current location from CampScreen
+        const campScreenElement = document.getElementById('camp-screen');
+        if (!campScreenElement) return;
         
-        // Certain hiding spots have higher chances
-        if (hidingSpot.includes("tree") || 
-            hidingSpot.includes("buried") || 
-            hidingSpot.includes("flag") ||
-            hidingSpot.includes("distinctive")) {
-            searchChance += 0.1; // +10% for classic hiding spots
+        // Look for the data-location attribute on the selected location button
+        const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
+        if (!selectedLocationButton) return;
+        
+        const locationName = selectedLocationButton.getAttribute('data-location');
+        if (!locationName) return;
+        
+        // Check if this spot has been searched before
+        const searchKey = `${locationName}:${hidingSpot}`;
+        
+        // Cost of searching is 2 energy
+        if (!this.gameManager.energySystem.useEnergy(2)) {
+            this.gameManager.dialogueSystem.showDialogue(
+                "You don't have enough energy to search for an idol.",
+                ["Continue"],
+                () => this.gameManager.dialogueSystem.hideDialogue()
+            );
+            return;
         }
         
-        // Player's mental stat affects chance
-        const player = this.gameManager.getPlayerSurvivor();
-        if (player) {
-            searchChance += (player.mentalStat - 50) / 200; // +/- up to 25% based on mental stat
-        }
-        
-        // Check for success
-        const searchSuccess = Math.random() < searchChance;
+        // Add to searched spots
+        this.searchedSpots.add(searchKey);
         
         // Show searching animation/message
         this.gameManager.dialogueSystem.showDialogue(
             `You carefully search ${hidingSpot}...`,
             ["Continue searching..."],
             () => {
+                // Check if this is where the idol is hidden
+                const idolFound = this.idolLocation && 
+                                 this.idolLocation.location === locationName && 
+                                 this.idolLocation.hidingSpot === hidingSpot;
+                
                 // After a brief pause, show result
-                if (searchSuccess) {
+                if (idolFound) {
                     this.givePlayerIdol();
+                    // Reset idol location for next time
+                    this.resetIdolLocations();
                 } else {
                     // Create different messages for different results
                     const messages = [
@@ -223,6 +261,11 @@ class IdolSystem {
         if (survivor && survivor.hasIdol) {
             survivor.hasIdol = false;
             this.idolsInPlay--;
+            
+            // Reset idol locations when an idol is played
+            this.resetIdolLocations();
+            
+            console.log("Idol played. New idol location generated.");
         }
     }
     
