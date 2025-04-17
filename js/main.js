@@ -329,6 +329,44 @@ function updateInventoryDisplay() {
     const totalIdols = gameManager.idolSystem ? gameManager.idolSystem.getIdolsInPlay() : 0;
     idolsInPlay.textContent = `Idols in Play: ${totalIdols}`;
     
+    // Add details about who has idols if any are in play
+    if (totalIdols > 0 && gameManager.idolSystem) {
+        const idolHolders = gameManager.idolSystem.getSurvivorsWithIdols();
+        let idolHoldersElement = document.getElementById('idol-holders');
+        
+        // Create the element if it doesn't exist
+        if (!idolHoldersElement) {
+            idolHoldersElement = document.createElement('div');
+            idolHoldersElement.id = 'idol-holders';
+            idolHoldersElement.style.fontSize = '0.9em';
+            idolHoldersElement.style.marginTop = '5px';
+            idolHoldersElement.style.padding = '5px';
+            idolHoldersElement.style.backgroundColor = '#f8f9fa';
+            idolHoldersElement.style.borderRadius = '4px';
+            idolsInPlay.parentNode.insertBefore(idolHoldersElement, idolsInPlay.nextSibling);
+        }
+        
+        // Update the element with idol holders
+        idolHoldersElement.innerHTML = '<strong>Idol Holders:</strong>';
+        const holdersList = document.createElement('ul');
+        holdersList.style.marginTop = '5px';
+        holdersList.style.paddingLeft = '20px';
+        
+        idolHolders.forEach(survivor => {
+            const holderItem = document.createElement('li');
+            holderItem.textContent = `${survivor.name}${survivor.isPlayer ? ' (You)' : ''}`;
+            holdersList.appendChild(holderItem);
+        });
+        
+        idolHoldersElement.appendChild(holdersList);
+    } else {
+        // Remove the idol holders element if no idols are in play
+        const idolHoldersElement = document.getElementById('idol-holders');
+        if (idolHoldersElement) {
+            idolHoldersElement.remove();
+        }
+    }
+    
     // Update immunity status
     const hasImmunity = player.hasImmunity || (playerTribe.members.some(member => member.hasImmunity) && gameManager.getGamePhase() === "preMerge");
     immunityStatus.textContent = `Immunity: ${hasImmunity ? 'Yes' : 'No'}`;

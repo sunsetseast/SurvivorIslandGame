@@ -446,7 +446,23 @@ class IdolSystem {
      * @returns {number} The number of idols currently in play
      */
     getIdolsInPlay() {
-        return this.idolsInPlay;
+        // Rather than using our counter, we'll count the actual number of idols
+        // to make sure our display is always accurate
+        let count = 0;
+        
+        // Count how many survivors have idols
+        this.gameManager.getTribes().forEach(tribe => {
+            tribe.members.forEach(member => {
+                if (member.hasIdol) {
+                    count++;
+                }
+            });
+        });
+        
+        // Update our counter to match reality
+        this.idolsInPlay = count;
+        
+        return count;
     }
     
     /**

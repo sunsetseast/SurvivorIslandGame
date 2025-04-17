@@ -701,3 +701,13 @@ button:disabled {
         min-width: 150px;
     }
 }
+
+/* Tribe Division Subtitle */
+.tribe-division-subtitle {
+    text-align: center;
+    font-size: 1.2em;
+    color: #64748b;
+    margin: 0 auto 20px auto;
+    font-style: italic;
+    max-width: 80%;
+}
