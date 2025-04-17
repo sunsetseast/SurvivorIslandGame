@@ -287,4 +287,95 @@ class RelationshipSystem {
         
         return survivor.relationships;
     }
+    
+    /**
+     * Add a memory between two survivors
+     * @param {Object} survivor1 - The first survivor
+     * @param {Object} survivor2 - The second survivor
+     * @param {string} memoryText - The memory text
+     * @param {number} importance - How important this memory is (1-5, 5 being most important)
+     */
+    addMemory(survivor1, survivor2, memoryText, importance = 3) {
+        if (!survivor1 || !survivor2) return;
+        
+        // Create a unique key for this pair
+        const memoryKey = this.getMemoryKey(survivor1, survivor2);
+        
+        // Initialize memories for this pair if needed
+        if (!this.memories[memoryKey]) {
+            this.memories[memoryKey] = [];
+        }
+        
+        // Add new memory with timestamp
+        this.memories[memoryKey].push({
+            text: memoryText,
+            day: this.gameManager.getDay(),
+            importance: importance
+        });
+        
+        // Keep memories sorted by importance
+        this.memories[memoryKey].sort((a, b) => b.importance - a.importance);
+        
+        // Limit to most important 5 memories
+        if (this.memories[memoryKey].length > 5) {
+            this.memories[memoryKey] = this.memories[memoryKey].slice(0, 5);
+        }
+        
+        console.log(`Added memory between ${survivor1.name} and ${survivor2.name}: ${memoryText}`);
+    }
+    
+    /**
+     * Get memories between two survivors
+     * @param {Object} survivor1 - The first survivor
+     * @param {Object} survivor2 - The second survivor
+     * @returns {Array} Array of memory objects
+     */
+    getMemories(survivor1, survivor2) {
+        if (!survivor1 || !survivor2) return [];
+        
+        const memoryKey = this.getMemoryKey(survivor1, survivor2);
+        return this.memories[memoryKey] || [];
+    }
+    
+    /**
+     * Generate a consistent key for storing memories between two survivors
+     * @param {Object} survivor1 - The first survivor
+     * @param {Object} survivor2 - The second survivor
+     * @returns {string} A unique key for this pair
+     */
+    getMemoryKey(survivor1, survivor2) {
+        // Sort names to ensure consistent key regardless of parameter order
+        const names = [survivor1.name, survivor2.name].sort();
+        return `${names[0]}:${names[1]}`;
+    }
+    
+    /**
+     * Get a survivor's primary trait
+     * @param {Object} survivor - The survivor to get trait for
+     * @returns {string} The primary trait name
+     */
+    getSurvivorTrait(survivor) {
+        if (!survivor) return "Unknown";
+        
+        // Determine trait based on stats
+        if (survivor.physicalStat > 70) return "Physical";
+        if (survivor.mentalStat > 70) return "Strategic";
+        if (survivor.personalityStat > 70) return "Social";
+        
+        // Random trait for more balanced survivors
+        const traitKeys = Object.keys(this.traits);
+        return traitKeys[Math.floor(Math.random() * traitKeys.length)];
+    }
+    
+    /**
+     * Get personality insight about a survivor
+     * @param {Object} survivor - The survivor to get insight about
+     * @returns {string} Personality insight
+     */
+    getPersonalityInsight(survivor) {
+        if (!survivor) return "You don't know much about them.";
+        
+        const trait = this.getSurvivorTrait(survivor);
+        return this.traits[trait] || "They're hard to read.";
+    }
 }

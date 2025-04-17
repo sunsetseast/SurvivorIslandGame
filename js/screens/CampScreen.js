@@ -422,48 +422,217 @@ const CampScreen = {
             return;
         }
         
-        // Generate random dialogue
-        const dialogueOptions = [
-            `${tribeMate.name} tells you about their life back home.`,
-            `${tribeMate.name} asks about your strategy in the game.`,
-            `You and ${tribeMate.name} chat about the other tribe members.`
-        ];
+        const player = gameManager.getPlayerSurvivor();
+        const relationship = gameManager.relationshipSystem.getRelationship(player, tribeMate);
+        const relationshipDesc = gameManager.relationshipSystem.getRelationshipDescription(player, tribeMate);
         
-        const dialogue = dialogueOptions[Math.floor(Math.random() * dialogueOptions.length)];
-        const choices = [
-            "Share personal details (+2 Relationship)",
-            "Keep the conversation light (+1 Relationship)",
-            "Try to gather information about their strategy (Strategic)"
-        ];
+        // Get any existing memories
+        const memories = gameManager.relationshipSystem.getMemories(player, tribeMate);
+        const hasMemories = memories.length > 0;
+        
+        // Get personality insight
+        const personalityInsight = gameManager.relationshipSystem.getPersonalityInsight(tribeMate);
+        
+        // Generate dialogue based on relationship level
+        let dialogue;
+        if (relationship < 30) {
+            dialogue = `${tribeMate.name} seems uncomfortable as you approach. ${personalityInsight}`;
+        } else if (relationship < 60) {
+            dialogue = `${tribeMate.name} greets you with a casual nod. ${personalityInsight}`;
+        } else {
+            dialogue = `${tribeMate.name} smiles as you walk up. ${personalityInsight}`;
+        }
+        
+        // Add memory reference if there are previous interactions
+        if (hasMemories) {
+            const mostImportantMemory = memories[0]; // Already sorted by importance
+            dialogue += `\n\nThey mention your previous conversation about ${mostImportantMemory.text}`;
+        }
+        
+        // More conversation options based on relationship level
+        const choices = [];
+        
+        // Basic options for everyone
+        choices.push("Talk about camp life (+1 Relationship)");
+        choices.push("Share personal stories (+2 Relationship)");
+        
+        // Strategic options unlock at different relationship levels
+        if (relationship >= 40) {
+            choices.push("Discuss other tribe members (Strategic)");
+        }
+        if (relationship >= 60) {
+            choices.push("Talk about alliance strategy (Alliance)");
+        }
+        if (relationship >= 75) {
+            choices.push("Share secret information (Deep Trust)");
+        }
         
         gameManager.dialogueSystem.showDialogue(dialogue, choices, (choice) => {
-            const player = gameManager.getPlayerSurvivor();
+            const selectedOption = choices[choice];
+            let memoryText = "";
+            let importance = 3;
             
-            if (choice === 0)
-                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
-            else if (choice === 1)
+            if (selectedOption.includes("camp life")) {
+                memoryText = "daily camp activities";
                 gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
-            else {
-                // Strategic choice - 50% chance of success
-                if (Math.random() < 0.5) {
+                
+                gameManager.dialogueSystem.showDialogue(
+                    `You and ${tribeMate.name} discuss the fire, water situation, and daily camp activities. It's a pleasant conversation.`,
+                    ["Continue"],
+                    () => gameManager.dialogueSystem.hideDialogue()
+                );
+            }
+            else if (selectedOption.includes("personal stories")) {
+                memoryText = "personal life stories";
+                importance = 4;
+                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
+                
+                gameManager.dialogueSystem.showDialogue(
+                    `You share stories about your life back home. ${tribeMate.name} seems genuinely interested and opens up about their own experiences.`,
+                    ["Continue"],
+                    () => gameManager.dialogueSystem.hideDialogue()
+                );
+            }
+            else if (selectedOption.includes("other tribe members")) {
+                memoryText = "opinions on other players";
+                importance = 4;
+                
+                // Get a random tribe member to discuss
+                const otherMembers = this.getPlayerTribe().members.filter(m => 
+                    m !== player && m !== tribeMate
+                );
+                
+                if (otherMembers.length > 0) {
+                    const discussTarget = otherMembers[Math.floor(Math.random() * otherMembers.length)];
+                    
+                    // Success chance based on relationship
+                    if (Math.random() * 100 < relationship) {
+                        const targetRelationship = gameManager.relationshipSystem.getRelationship(tribeMate, discussTarget);
+                        let opinion;
+                        
+                        if (targetRelationship < 30) opinion = "doesn't trust";
+                        else if (targetRelationship < 60) opinion = "is neutral about";
+                        else opinion = "trusts";
+                        
+                        gameManager.dialogueSystem.showDialogue(
+                            `${tribeMate.name} reveals that they ${opinion} ${discussTarget.name}. This is valuable information for your strategy.`,
+                            ["Good to know"],
+                            () => gameManager.dialogueSystem.hideDialogue()
+                        );
+                        
+                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
+                        memoryText = `their opinion of ${discussTarget.name}`;
+                    } else {
+                        gameManager.dialogueSystem.showDialogue(
+                            `${tribeMate.name} seems guarded and changes the subject when you bring up ${discussTarget.name}.`,
+                            ["Interesting"],
+                            () => gameManager.dialogueSystem.hideDialogue()
+                        );
+                        
+                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, -1);
+                        memoryText = "their unwillingness to gossip";
+                    }
+                }
+            }
+            else if (selectedOption.includes("alliance strategy")) {
+                memoryText = "alliance planning";
+                importance = 5;
+                
+                // Check if already in alliance
+                const inAlliance = gameManager.allianceSystem.areInSameAlliance(player, tribeMate);
+                
+                if (inAlliance) {
+                    // Discuss alliance strategy
                     gameManager.dialogueSystem.showDialogue(
-                        `${tribeMate.name} opens up about their plans in the game.`,
-                        ["Interesting..."],
-                        () => gameManager.dialogueSystem.hideDialogue()
-                    );
-                } else {
-                    gameManager.dialogueSystem.showDialogue(
-                        `${tribeMate.name} seems guarded and changes the subject.`,
-                        ["Hmm, they're cautious"],
+                        `You and ${tribeMate.name} strategize about your alliance's next moves. They suggest targeting someone who's a physical threat at the next vote.`,
+                        ["Good plan"],
                         () => gameManager.dialogueSystem.hideDialogue()
                     );
                     
-                    // Slight negative relationship effect
-                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, -1);
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
+                } else {
+                    // Propose alliance
+                    gameManager.dialogueSystem.showDialogue(
+                        `You suggest forming an alliance with ${tribeMate.name}. They seem ${relationship > 70 ? "very receptive" : "cautiously interested"} to the idea.`,
+                        ["Let's do it"],
+                        () => {
+                            const alliance = gameManager.allianceSystem.createAllianceBetween(player, tribeMate);
+                            if (alliance) {
+                                gameManager.dialogueSystem.showDialogue(
+                                    `You've formed an alliance with ${tribeMate.name}!`,
+                                    ["Excellent"],
+                                    () => gameManager.dialogueSystem.hideDialogue()
+                                );
+                            } else {
+                                gameManager.dialogueSystem.showDialogue(
+                                    `${tribeMate.name} wants to think about it more before committing to an alliance.`,
+                                    ["Fair enough"],
+                                    () => gameManager.dialogueSystem.hideDialogue()
+                                );
+                            }
+                        }
+                    );
+                }
+            }
+            else if (selectedOption.includes("secret information")) {
+                memoryText = "shared secrets";
+                importance = 5;
+                
+                // Determine if they have an idol
+                if (tribeMate.hasIdol) {
+                    gameManager.dialogueSystem.showDialogue(
+                        `In a moment of trust, ${tribeMate.name} reveals to you that they found a hidden immunity idol!`,
+                        ["That's huge information!"],
+                        () => gameManager.dialogueSystem.hideDialogue()
+                    );
+                    
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 3);
+                } else if (player.hasIdol) {
+                    // Player can share idol info
+                    gameManager.dialogueSystem.showDialogue(
+                        `Do you want to tell ${tribeMate.name} about your hidden immunity idol?`,
+                        ["Yes, I trust them", "No, keep it secret"],
+                        (shareChoice) => {
+                            if (shareChoice === 0) {
+                                gameManager.dialogueSystem.showDialogue(
+                                    `You confide in ${tribeMate.name} about your hidden immunity idol. They promise to keep your secret.`,
+                                    ["I hope I can trust them"],
+                                    () => gameManager.dialogueSystem.hideDialogue()
+                                );
+                                
+                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 4);
+                                // This memory is important - they know about your idol!
+                                memoryText = "your hidden immunity idol";
+                            } else {
+                                gameManager.dialogueSystem.showDialogue(
+                                    `You decide to keep your idol a secret for now.`,
+                                    ["Better safe than sorry"],
+                                    () => gameManager.dialogueSystem.hideDialogue()
+                                );
+                                
+                                // Still had a good conversation
+                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
+                                memoryText = "potential game strategies";
+                            }
+                        }
+                    );
+                    return; // Exit early since we have nested dialogues
+                } else {
+                    // Generic strategy talk
+                    gameManager.dialogueSystem.showDialogue(
+                        `You and ${tribeMate.name} have a deep strategic conversation about the game. You both share your thoughts on who might be targeting each other.`,
+                        ["This is valuable"],
+                        () => gameManager.dialogueSystem.hideDialogue()
+                    );
+                    
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
                 }
             }
             
-            gameManager.dialogueSystem.hideDialogue();
+            // Record the memory of this interaction
+            if (memoryText) {
+                gameManager.relationshipSystem.addMemory(player, tribeMate, memoryText, importance);
+            }
         });
     },
     
@@ -775,10 +944,15 @@ const CampScreen = {
         const dayAdvanced = gameManager.dayAdvanced;
         
         // Check if the tribe members have immunity after a challenge
-        const hasImmunity = playerTribe.members.length > 0 && playerTribe.members[0].hasImmunity;
+        const hasImmunity = playerTribe.members.length > 0 && playerTribe.members.some(member => member.hasImmunity);
+        
+        console.log("Proceed to next phase check - Tribe has immunity:", hasImmunity);
+        console.log("Player tribe members with immunity:", 
+                   playerTribe.members.filter(m => m.hasImmunity).map(m => m.name).join(", "));
         
         // If there was a recent challenge and player's tribe lost (no immunity)
         if (dayAdvanced && !hasImmunity && gameManager.gamePhase === "preMerge") {
+            console.log("Player tribe lost immunity, going to tribal council");
             // Go to tribal council (lost immunity)
             gameManager.dialogueSystem.showDialogue(
                 "Your tribe lost immunity in the challenge and must attend Tribal Council tonight.",
@@ -791,13 +965,15 @@ const CampScreen = {
         } 
         // If tribe has immunity, skip tribal council and inform player
         else if (dayAdvanced && hasImmunity && gameManager.gamePhase === "preMerge") {
+            console.log("Player tribe has immunity, skipping tribal council");
             gameManager.dialogueSystem.showDialogue(
                 "Your tribe won immunity in the challenge! You can relax tonight while the other tribe goes to Tribal Council.",
                 ["Continue"],
                 () => {
                     gameManager.dialogueSystem.hideDialogue();
-                    // Skip tribal council and advance to next day
-                    gameManager.advanceDay();
+                    // Skip tribal council - the other tribe will go via TribalCouncilSystem
+                    // Proceed to the other tribe's tribal council
+                    gameManager.setGameState("tribalCouncil");
                 }
             );
         }

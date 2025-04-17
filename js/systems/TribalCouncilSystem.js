@@ -38,9 +38,13 @@ class TribalCouncilSystem {
             const playerTribe = this.gameManager.getPlayerTribe();
             
             // Check if player's tribe won immunity
-            if (playerTribe.members.some(member => member.hasImmunity)) {
+            const playerTribeHasImmunity = playerTribe.members.length > 0 && playerTribe.members.some(member => member.hasImmunity);
+            
+            if (playerTribeHasImmunity) {
                 // Player's tribe won immunity, the other tribe goes to tribal
-                const losingTribeName = this.gameManager.challengeSystem.getLosingTribeName();
+                const losingTribeName = this.gameManager.challengeSystem.losingTribeName;
+                
+                console.log("Player tribe has immunity. Losing tribe is: " + losingTribeName);
                 
                 // Find the losing tribe
                 const losingTribe = this.gameManager.getTribes().find(tribe => 
@@ -50,27 +54,40 @@ class TribalCouncilSystem {
                 // If we have a valid losing tribe, use it
                 if (losingTribe) {
                     this.currentTribe = losingTribe;
+                    console.log("Simulating NPC tribal council for tribe: " + losingTribe.tribeName);
                     this.simulateNPCTribalCouncil(); // Automatically handle NPC tribal council
                     return;
                 }
                 
-                // Fallback if tribe not found
-                this.currentTribe = this.gameManager.getTribes().find(tribe => tribe !== playerTribe);
-                this.simulateNPCTribalCouncil();
+                // Fallback if tribe not found - find any tribe that's not the player's
+                const otherTribe = this.gameManager.getTribes().find(tribe => tribe !== playerTribe);
+                if (otherTribe) {
+                    this.currentTribe = otherTribe;
+                    console.log("Fallback: Simulating NPC tribal council for tribe: " + otherTribe.tribeName);
+                    this.simulateNPCTribalCouncil();
+                    return;
+                }
+                
+                // If we somehow don't have another tribe, just skip tribal council
+                console.log("Error: Could not find a tribe to send to tribal council. Skipping tribal.");
+                this.gameManager.setGameState("camp");
                 return;
             }
             
             // Player's tribe lost immunity, they go to tribal
             this.currentTribe = playerTribe;
+            console.log("Player tribe is going to tribal council: " + playerTribe.tribeName);
             
             // Check if any tribe member has immunity
             this.immunePlayers = this.currentTribe.members.filter(member => member.hasImmunity);
         } else {
             // In post-merge, everyone goes to tribal council
             this.currentTribe = this.gameManager.getTribes()[0]; // Merged tribe
+            console.log("Post-merge tribal council for merged tribe");
             
             // Get players with immunity
-            this.immunePlayers = this.gameManager.challengeSystem.getImmunePlayers();
+            this.immunePlayers = this.currentTribe.members.filter(member => member.hasImmunity);
+            console.log("Immune players: " + this.immunePlayers.map(p => p.name).join(", "));
         }
     }
     
