@@ -80,6 +80,38 @@ function setupEventListeners() {
         });
     }
     
+    // Restart game button
+    const restartButton = document.getElementById('restart-game-button');
+    if (restartButton) {
+        restartButton.addEventListener('click', () => {
+            // Confirm restart
+            gameManager.dialogueSystem.showDialogue(
+                "Are you sure you want to restart the game? All progress will be lost.",
+                ["Restart", "Cancel"],
+                (choice) => {
+                    if (choice === 0) { // Restart
+                        // Delete saved game
+                        deleteSaveGame();
+                        
+                        // Initialize new game
+                        gameManager.initializeGame();
+                        
+                        // Close menu
+                        const hamburgerIcon = document.getElementById('hamburger-icon');
+                        const gameMenu = document.getElementById('game-menu');
+                        if (hamburgerIcon) hamburgerIcon.classList.remove('change');
+                        if (gameMenu) gameMenu.classList.remove('active');
+                        
+                        // Hide dialogue
+                        gameManager.dialogueSystem.hideDialogue();
+                    } else { // Cancel
+                        gameManager.dialogueSystem.hideDialogue();
+                    }
+                }
+            );
+        });
+    }
+    
     // Help button
     const helpButton = document.getElementById('help-button');
     if (helpButton) {

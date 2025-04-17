@@ -137,29 +137,28 @@ class GameManager {
         // Reset tribes
         this.tribes = [];
         
-        // Create two initial tribes
-        const tribe1 = {
-            tribeName: tribeNames[0],
-            tribeColor: tribeColors[0],
-            members: [],
-            fire: 50,
-            water: 50,
-            food: 50,
-            health: 100 // New tribe health property
-        };
+        // Determine how many tribes to create (2 or 3)
+        const tribeCount = this.tribeCount || 2;
         
-        const tribe2 = {
-            tribeName: tribeNames[1],
-            tribeColor: tribeColors[1],
-            members: [],
-            fire: 50,
-            water: 50,
-            food: 50,
-            health: 100 // New tribe health property
-        };
+        // Create array to hold all tribes
+        const createdTribes = [];
         
-        // Add player to tribe 1
-        tribe1.members.push(this.playerCharacter);
+        // Create tribes based on tribeCount
+        for (let i = 0; i < tribeCount; i++) {
+            const newTribe = {
+                tribeName: tribeNames[i],
+                tribeColor: tribeColors[i],
+                members: [],
+                fire: 50,
+                water: 50,
+                food: 50,
+                health: 100
+            };
+            createdTribes.push(newTribe);
+        }
+        
+        // Add player to first tribe
+        createdTribes[0].members.push(this.playerCharacter);
         
         // Get random NPCs
         const npcSurvivors = [];
@@ -170,23 +169,40 @@ class GameManager {
         // Shuffle the NPCs
         const shuffledNPCs = shuffleArray(npcSurvivors);
         
-        // Divide NPCs between tribes
-        for (let i = 0; i < 9; i++) {
-            if (i < 5) {
-                tribe1.members.push(shuffledNPCs[i]);
-            } else {
-                tribe2.members.push(shuffledNPCs[i]);
+        // Determine how to distribute survivors
+        // For 2 tribes: 9 players per tribe (including player)
+        // For 3 tribes: 6 players per tribe (including player)
+        const playersPerTribe = tribeCount === 2 ? 9 : 6;
+        
+        // First tribe already has 1 player (the user), so add (playersPerTribe-1) NPCs
+        const npcsForFirstTribe = playersPerTribe - 1;
+        
+        // Add NPCs to first tribe
+        for (let i = 0; i < npcsForFirstTribe; i++) {
+            createdTribes[0].members.push(shuffledNPCs[i]);
+        }
+        
+        // Add remaining NPCs to other tribes
+        let npcIndex = npcsForFirstTribe;
+        
+        for (let tribeIndex = 1; tribeIndex < tribeCount; tribeIndex++) {
+            for (let i = 0; i < playersPerTribe; i++) {
+                if (npcIndex < shuffledNPCs.length) {
+                    createdTribes[tribeIndex].members.push(shuffledNPCs[npcIndex]);
+                    npcIndex++;
+                }
             }
         }
         
         // Add tribes to game
-        this.tribes.push(tribe1);
-        this.tribes.push(tribe2);
+        this.tribes = createdTribes;
         
         // Initialize relationships
         this.tribes.forEach(tribe => {
             this.relationshipSystem.initializeTribeRelationships(tribe);
         });
+        
+        console.log(`Created ${tribeCount} tribes with ${playersPerTribe} players each.`);
     }
     
     /**
