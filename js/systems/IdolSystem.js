@@ -20,30 +20,38 @@ class IdolSystem {
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
             // No idols left to find
-            gameManager.dialogueSystem.showDialogue(
+            this.gameManager.dialogueSystem.showDialogue(
                 "You search around but don't find any hidden immunity idols.",
                 ["Continue"],
-                () => gameManager.dialogueSystem.hideDialogue()
+                () => this.gameManager.dialogueSystem.hideDialogue()
             );
             return;
         }
         
-        // Get current location
-        const location = gameManager.screens.CampScreen.selectedLocation;
-        if (!location) return;
+        // Get current location from CampScreen
+        // First check if we can access it
+        const campScreenElement = document.getElementById('camp-screen');
+        if (!campScreenElement) return;
+        
+        // Look for the data-location attribute on the selected location button
+        const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
+        if (!selectedLocationButton) return;
+        
+        const locationName = selectedLocationButton.getAttribute('data-location');
+        if (!locationName) return;
         
         // Get location-specific hiding spots
-        const hidingSpots = this.getLocationHidingSpots(location.name);
+        const hidingSpots = this.getLocationHidingSpots(locationName);
         
         // Create idol search options
         const choiceTexts = hidingSpots.map(spot => `Search ${spot}`);
         
         // Show search options dialogue
-        gameManager.dialogueSystem.showDialogue(
+        this.gameManager.dialogueSystem.showDialogue(
             "Where would you like to search for a hidden immunity idol?",
             choiceTexts,
             (choice) => {
-                gameManager.dialogueSystem.hideDialogue();
+                this.gameManager.dialogueSystem.hideDialogue();
                 this.startIdolSearch(hidingSpots[choice]);
             }
         );
@@ -131,7 +139,7 @@ class IdolSystem {
         const searchSuccess = Math.random() < searchChance;
         
         // Show searching animation/message
-        gameManager.dialogueSystem.showDialogue(
+        this.gameManager.dialogueSystem.showDialogue(
             `You carefully search ${hidingSpot}...`,
             ["Continue searching..."],
             () => {
@@ -147,10 +155,10 @@ class IdolSystem {
                         `Unfortunately, there's no idol hidden ${hidingSpot}.`
                     ];
                     
-                    gameManager.dialogueSystem.showDialogue(
+                    this.gameManager.dialogueSystem.showDialogue(
                         getRandomItem(messages),
                         ["Continue"],
-                        () => gameManager.dialogueSystem.hideDialogue()
+                        () => this.gameManager.dialogueSystem.hideDialogue()
                     );
                 }
             }
@@ -167,10 +175,10 @@ class IdolSystem {
             playerSurvivor.hasIdol = true;
             this.idolsInPlay++;
             
-            gameManager.dialogueSystem.showDialogue(
+            this.gameManager.dialogueSystem.showDialogue(
                 "You found a Hidden Immunity Idol! You can play this at Tribal Council to protect yourself from being voted out.",
                 ["Awesome!"],
-                () => gameManager.dialogueSystem.hideDialogue()
+                () => this.gameManager.dialogueSystem.hideDialogue()
             );
         }
     }
@@ -199,10 +207,10 @@ class IdolSystem {
             this.idolsInPlay++;
             
             // Notify player with a hint
-            gameManager.dialogueSystem.showDialogue(
+            this.gameManager.dialogueSystem.showDialogue(
                 `You notice ${luckyFinder.name} searching around camp and looking suspicious. They might have found something interesting.`,
                 ["Interesting..."],
-                () => gameManager.dialogueSystem.hideDialogue()
+                () => this.gameManager.dialogueSystem.hideDialogue()
             );
         }
     }
