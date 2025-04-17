@@ -263,8 +263,8 @@ class IdolSystem {
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
         
-        // Cost of searching is 2 energy
-        if (!this.gameManager.energySystem.useEnergy(2)) {
+        // Check if player has enough energy first (2 energy cost)
+        if (this.gameManager.energySystem.getCurrentEnergy() < 2) {
             this.gameManager.dialogueSystem.showDialogue(
                 "You don't have enough energy to search for an idol.",
                 ["Continue"],
@@ -272,6 +272,10 @@ class IdolSystem {
             );
             return;
         }
+        
+        // Consume energy only when a specific hiding spot is chosen
+        // Cost of searching is 2 energy
+        this.gameManager.energySystem.useEnergy(2);
         
         // Add to searched spots
         this.searchedSpots.add(searchKey);
