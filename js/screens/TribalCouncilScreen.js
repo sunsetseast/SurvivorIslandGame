@@ -153,10 +153,26 @@ const TribalCouncilScreen = {
      * Cast vote
      */
     castVote() {
+        // Disable button to prevent multiple clicks
+        const castVoteButton = document.getElementById('cast-vote-button');
+        if (castVoteButton) {
+            castVoteButton.disabled = true;
+            castVoteButton.textContent = "Casting Vote...";
+        }
+        
+        // Check if this is a revote
+        const isRevote = document.getElementById('tribal-instruction')?.textContent.includes('REVOTE');
+        
         // Cast votes
         gameManager.tribalCouncilSystem.castVote();
         
-        // First announce "I'll go tally the votes"
+        if (isRevote) {
+            // For revote, skip idol play opportunity and go directly to counting
+            this.completeRevote();
+            return;
+        }
+        
+        // First announce "I'll go tally the votes" for regular votes
         gameManager.dialogueSystem.showDialogue(
             "Jeff Probst: \"I'll go tally the votes.\"",
             ["Continue"],
@@ -227,9 +243,12 @@ const TribalCouncilScreen = {
      * @param {Object} tieResults - The tie vote results
      */
     handleTieVote(tieResults) {
+        // Store the tied players in the tribal council system for reference
+        gameManager.tribalCouncilSystem.tiedPlayers = tieResults.tiedPlayers;
+        
         // Announce the tie
         gameManager.dialogueSystem.showDialogue(
-            `We have a tie between ${tieResults.tiedPlayers.join(" and ")}. According to the rules, we'll have a revote. Only these tied players can be voted for, and they cannot vote.`,
+            `Jeff: "We have a tie between ${tieResults.tiedPlayers.join(" and ")}. According to the rules, we'll have a revote. Only these tied players can be voted for, and they cannot vote."`,
             ["Proceed to Revote"],
             () => {
                 gameManager.dialogueSystem.hideDialogue();

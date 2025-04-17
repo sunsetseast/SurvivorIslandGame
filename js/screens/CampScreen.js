@@ -58,7 +58,9 @@ const CampScreen = {
         const playerTribe = gameManager.getPlayerTribe();
         
         if (tribeNameElement && playerTribe) {
-            tribeNameElement.textContent = playerTribe.tribeName + " Tribe";
+            // Check if tribe has immunity and update the display
+            const hasImmunity = playerTribe.members.length > 0 && playerTribe.members[0].hasImmunity;
+            tribeNameElement.textContent = playerTribe.tribeName + " Tribe" + (hasImmunity ? " (Immune)" : "");
         }
         
         if (dayNumberElement) {
@@ -773,7 +775,7 @@ const CampScreen = {
         const dayAdvanced = gameManager.dayAdvanced;
         
         // Check if the tribe members have immunity after a challenge
-        const hasImmunity = playerTribe.members.some(member => member.hasImmunity);
+        const hasImmunity = playerTribe.members.length > 0 && playerTribe.members[0].hasImmunity;
         
         // If there was a recent challenge and player's tribe lost (no immunity)
         if (dayAdvanced && !hasImmunity && gameManager.gamePhase === "preMerge") {
@@ -787,7 +789,19 @@ const CampScreen = {
                 }
             );
         } 
-        // If in post-merge phase, everyone goes to tribal council after the challenge
+        // If tribe has immunity, skip tribal council and inform player
+        else if (dayAdvanced && hasImmunity && gameManager.gamePhase === "preMerge") {
+            gameManager.dialogueSystem.showDialogue(
+                "Your tribe won immunity in the challenge! You can relax tonight while the other tribe goes to Tribal Council.",
+                ["Continue"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    // Skip tribal council and advance to next day
+                    gameManager.advanceDay();
+                }
+            );
+        }
+        // If in post-merge phase, individual immunity applies, but everyone still goes to tribal
         else if (dayAdvanced && gameManager.gamePhase === "postMerge") {
             gameManager.dialogueSystem.showDialogue(
                 "It's time for Tribal Council.",
