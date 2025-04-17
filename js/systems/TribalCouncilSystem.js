@@ -22,6 +22,17 @@ class TribalCouncilSystem {
         this.eliminatedSurvivor = null;
         this.finalTribalCouncil = false;
         this.idolPlayed = false;
+        
+        // Clear any vote results UI elements when initializing
+        const voteResults = document.getElementById('vote-results-container');
+        if (voteResults) {
+            voteResults.innerHTML = '';
+        }
+        
+        // Also clear any cached voting data
+        if (this.gameManager) {
+            this.gameManager.lastVoteCount = null;
+        }
     }
     
     /**
@@ -509,6 +520,12 @@ class TribalCouncilSystem {
             this.gameManager.setGameState("gameOver");
             return true;
         }
+        
+        // Save this eliminated player name for reference in next game phase
+        this.gameManager.lastVotedOut = this.eliminatedSurvivor.name;
+        this.gameManager.lastVotedOutShown = false; // Reset flag for next phase
+        
+        console.log("Setting last voted out player:", this.eliminatedSurvivor.name);
         
         // Otherwise, eliminate survivor and continue
         this.gameManager.eliminateSurvivor(this.eliminatedSurvivor);

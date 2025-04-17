@@ -28,10 +28,16 @@ const TribalCouncilScreen = {
             });
         }
         
-        // Hide results panel
+        // Clear and hide results panel
         const voteResults = document.getElementById('vote-results');
         if (voteResults) {
             voteResults.classList.add('hidden');
+        }
+        
+        // Explicitly clear vote results container to prevent old votes from showing up
+        const voteResultsContainer = document.getElementById('vote-results-container');
+        if (voteResultsContainer) {
+            voteResultsContainer.innerHTML = '';
         }
     },
     
