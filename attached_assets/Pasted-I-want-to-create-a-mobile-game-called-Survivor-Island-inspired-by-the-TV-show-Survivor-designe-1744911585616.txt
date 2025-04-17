@@ -1,0 +1,146 @@
+I want to create a mobile game called *Survivor Island*, inspired by the TV show *Survivor*, designed to be playable on an iPhone. The game should be a tap-based, narrative-driven experience similar in gameplay style to *Hogwarts Mystery*, with players making dialogue choices, strategic decisions, and relationship-based interactions that influence their progress. The gameplay loop includes forming alliances, navigating tribal politics, participating in challenges through simplified tap mechanics, and surviving tribal councils. The game will focus on consequential decision-making, character relationship tracking, and story progression rather than complex action. Social strategy, confessionals, and player influence should be handled through conversations, choices, and timed tasks.
+
+The art style should be stylized 3D or 2.5D, with a colorful but semi-realistic tropical island setting (beach, jungle, campfire, challenge area). The UI must be iPhone-friendly, featuring dialogue boxes, choice buttons, an energy/stamina system, and a camp interface or map to navigate locations. The game should feel immersive, with smooth transitions, vibrant visuals, and intuitive tap-based controls optimized for iPhone screens (e.g., iPhone 12–16).
+
+### Game Flow
+1. **Welcome Screen**:
+   - Displays the game title, *Survivor Island*, with a stylized tropical background and a prominent "Play" button.
+   - Tapping "Play" starts a new game.
+
+2. **Character Selection**:
+   - Players choose from a roster of famous *Survivor* players: Russell Hantz, Sandra Diaz-Twine, Parvati Shallow, Amanda Kimmel, Ozzy Lusth, Michaela Bradshaw, Kelley Wentworth, Rupert Boneham, Jeremy Collins, Kim Spradlin, Michele Fitzgerald, Natalie Anderson, Coach Wade, Rob Mariano, Sarah Lacina, Cirie Fields, Tony Vlachos, Tyson Apostol, Wendell Holland, Yul Kwon.
+   - Each survivor has unique traits (Physical, Mental, Personality) displayed in a popup (e.g., Russell: Physical 80, Mental 91, Personality 92).
+   - Tap to select a survivor and confirm.
+
+3. **Tribe Division**:
+   - After character selection, 20 players (1 player + 19 NPCs) are randomly divided into 2 tribes (10 per tribe) or 3 tribes (6–7 per tribe).
+   - Tribes are assigned random names (e.g., Apa, Moto, Galang, Tadhana, Bayon, Malolo, Vokai, Kama, Lairo, Yara) and colors (e.g., red, blue, green).
+   - UI shows tribe assignments with member names and colors.
+
+4. **First Immunity Challenge**:
+   - Tribes compete in a tap-based challenge (e.g., tap to complete an obstacle course or solve a puzzle).
+   - The winning tribe(s) (1 for 2 tribes, 2 for 3 tribes) gain immunity and are safe from Tribal Council.
+   - The losing tribe(s) proceed to Tribal Council.
+
+5. **Camp Phase (Pre-Challenge)**:
+   - Players spend energy (3 points daily) on actions: gathering resources (fire, water, food), hunting for hidden immunity idols, chatting with tribe mates, strategizing, or building alliances.
+   - UI: Tappable camp map with locations (beach, jungle, campfire).
+
+6. **Tribal Council (Losing Tribe)**:
+   - The losing tribe votes off one player.
+   - Players tap to vote for a tribe mate, with NPCs voting based on relationships and random factors.
+   - Hidden immunity idols (if found) can be played to negate votes.
+   - Eliminated player joins the jury.
+
+7. **Normal Game Loop**:
+   - **Camp (Pre-Challenge)**: Gather resources, hunt idols, chat, strategize, form alliances.
+   - **Immunity Challenge**: Tribes compete; winners are safe.
+   - **Camp (Post-Challenge)**: Strategize and prepare for Tribal Council (losers only).
+   - **Tribal Council**: Losing tribe votes off a player.
+   - Continues until 12 survivors remain.
+
+8. **Merge Phase**:
+   - At 12 survivors, tribes merge into one tribe ("Merged", gold color).
+   - Challenges become individual, with one winner gaining immunity at Tribal Council.
+   - Camp and Tribal Council mechanics remain, but alliances and relationships become more critical.
+
+9. **Final 3 and Endgame**:
+   - At 3 survivors, a final immunity challenge determines the winner.
+   - The winner chooses one player to save and one to eliminate.
+   - The jury (final 10 eliminated players) votes for the winner based on relationships and strategic moves.
+   - UI: Dramatic final vote reveal with winner announcement.
+
+### Key Gameplay Systems
+1. **Player Creation and Stats**:
+   - Players select a survivor with traits (Physical, Mental, Personality) affecting challenge performance, dialogue success, and relationship-building.
+   - Example: High Mental improves puzzle challenges; high Personality boosts alliance formation.
+
+2. **Energy/Stamina System**:
+   - 3 energy points daily for camp actions (e.g., 1 point to gather resources).
+   - Energy recharges over time or via rewards.
+   - UI: Energy bar at the top of the camp screen, with low-energy alerts.
+
+3. **Narrative and Dialogue Choices**:
+   - Story-driven with confessional cutscenes where players reflect on strategy (e.g., "I trust Parvati, but Sandra’s a threat").
+   - Dialogue choices impact relationships (+/- 0–5 points) and unlock strategic options.
+   - Example: Choosing to confront a tribe mate may lower their relationship but gain respect from others.
+
+4. **Social Strategy and Relationships**:
+   - Relationships (0–100) tracked for each tribe mate, viewable in a popup.
+   - Strong relationships improve alliance strength and reduce vote-out risk.
+   - Weak relationships increase betrayal chances.
+   - Confessionals allow players to influence NPC perceptions (e.g., "I’m targeting Tony").
+
+5. **Alliances**:
+   - Form alliances with tribe mates (relationship 52+ required).
+   - Alliances have strength based on average relationship scores.
+   - UI: Popup to create/manage alliances, showing members and strength.
+   - Choices to invite or leave alliances affect relationships.
+
+6. **Challenges**:
+   - Tap-based mechanics (e.g., tap to fill a progress bar for running or solving puzzles).
+   - Success depends on tribe/individual stats (health, traits) and player input.
+   - Option to "throw" challenges strategically.
+   - Visuals: Animated 3D/2.5D sequences (e.g., climbing, swimming).
+
+7. **Tribal Council**:
+   - Tap a tribe mate’s portrait to vote, with a confirmation button.
+   - NPCs vote based on relationships and random factors.
+   - Hidden idols negate votes if played.
+   - Vote reveal is dramatic, with timed text (e.g., "1st Vote… Sandra").
+   - Jury tracks eliminated players (final 10).
+
+8. **Hidden Immunity Idols**:
+   - Jungle minigame: Tap objects (e.g., tree, rock) to search (1 energy, 1 search per phase).
+   - Random success (1/6 chance) unless idol is found.
+   - UI: Interactive 3D/2.5D objects with tap feedback.
+
+9. **Camp Activities**:
+   - Tap to gather resources, improving tribe health (fire, water, food).
+   - Resources impact challenge performance.
+   - Camp map with tappable areas for navigation.
+
+### UI Flow
+- **Welcome Screen**: Tropical background, *Survivor Island* logo, tap-to-play button.
+- **Character Selection**: Grid of survivor portraits with stats popup (tap to select).
+- **Camp Interface**: 2.5D map with tappable locations (beach, jungle, campfire, challenge area). Shows energy, health, tribe stats.
+- **Dialogue Screen**: Bottom dialogue box with NPC portrait, 2–4 choice buttons, confessional prompts.
+- **Challenge Screen**: Tap-based minigame with progress bar and 3D/2.5D animations.
+- **Tribal Council Screen**: Portrait grid for voting, idol play popup, vote reveal animation.
+- **Menu Popup**: Dropdown with tabs for Player Stats, Tribe Stats, Relationships, Alliances, All Tribes Stats.
+- **Transitions**: Smooth fades/slides, with tropical sound effects (waves, birds).
+
+### Technical Requirements
+- **Framework**: Choose a mobile-friendly framework optimized for iPhone (e.g., Unity for 3D/2.5D, Godot, or Flutter for UI-heavy apps). Avoid HTML/CSS/JavaScript unless necessary for rapid prototyping.
+- **Assets**: Stylized 3D/2.5D models for characters, environments, and objects. Vibrant colors (blues, greens, yellows) with semi-realistic textures.
+- **Storage**: Save game state (stats, relationships, tribes) using local storage or cloud for persistence.
+- **Performance**: Optimize for iPhone (e.g., iPhone 12–16, 60 FPS, minimal load times).
+- **Touch Controls**: Convert all interactions to tap/swipe, ensuring buttons are large enough for iPhone screens.
+
+### Art Style
+- **Environment**: Tropical island with jungles, beaches, cliffs. Stylized lighting (sunsets, torchlight) for atmosphere.
+- **Characters**: Semi-realistic 3D/2.5D models with unique looks (e.g., Russell’s fedora, Parvati’s smile). Expressive animations (talking, running).
+- **UI Elements**: Rounded buttons with tropical motifs (palm leaves, shells). Dialogue boxes styled like parchment or bamboo.
+
+### Audio
+- **Music**: Tropical score with drums/flutes, tense music for tribal councils.
+- **Sound Effects**: Waves, jungle ambiance, tap feedback, vote reveal stings.
+- **Voice**: Optional voiced confessionals or text-to-speech for immersion.
+
+### Existing Code (Optional)
+I have an existing HTML/CSS/JavaScript version of *Survivor Island* with similar mechanics (welcome screen, tribe division, camp phase, challenges, tribal council). You can adapt its logic (e.g., tribe management, relationships, voting) for the mobile framework, but prioritize a native iPhone app over web-based code. If needed, I can provide the files for reference.
+
+### Additional Features
+- **Tutorial**: Guided taps to teach navigation, energy use, and voting.
+- **Achievements**: Rewards for milestones (e.g., "Form 3 alliances", "Win 5 challenges").
+- **Daily Rewards**: Energy boosts or cosmetics (e.g., bandanas) for daily play.
+- **Monetization**: Optional in-app purchases for energy refills, cosmetic skins, or premium challenges (non-pay-to-win).
+
+### Deliverables
+- **Game Structure**: Full codebase with iPhone-compatible framework, implementing all mechanics.
+- **UI Flow**: Wireframes or scenes for each screen (welcome, camp, dialogue, etc.).
+- **Assets**: Sample 3D/2.5D models for one survivor, one location (e.g., beach), and UI elements.
+- **Documentation**: Guide to test on iPhone emulator (e.g., Xcode Simulator).
+- **Build Instructions**: Steps to compile and deploy to an iPhone.
+
+Please generate the game structure, UI flow, and key systems for an iPhone app. Ensure the game is engaging, visually appealing, and true to the *Survivor* theme, following the specified game flow (welcome > character selection > tribes > first challenge > camp > tribal council > normal loop > merge > final 3 > jury vote). Provide a working prototype or detailed code snippets for core mechanics (e.g., dialogue, challenges, voting). Optimize for iPhone playability and include the listed survivor names. If clarification is needed, let me know!
