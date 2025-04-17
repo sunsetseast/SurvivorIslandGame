@@ -23,11 +23,58 @@ const TribeDivisionScreen = {
             titleElement.textContent = "Tribes are merging!";
         }
         
+        // Add a subtitle
+        let subtitleElement = document.querySelector('#tribe-division-subtitle');
+        if (!subtitleElement) {
+            subtitleElement = document.createElement('p');
+            subtitleElement.id = 'tribe-division-subtitle';
+            subtitleElement.className = 'tribe-division-subtitle';
+            const titleElement = document.querySelector('#tribe-division-screen h2');
+            if (titleElement && titleElement.parentNode) {
+                titleElement.parentNode.insertBefore(subtitleElement, titleElement.nextSibling);
+            }
+        }
+        subtitleElement.textContent = "You've reached the individual phase of the game!";
+        
         this.createTribeDisplays();
         
-        // Set up continue button
+        // Update continue button text
         const continueButton = document.getElementById('continue-to-challenge-button');
         if (continueButton) {
+            continueButton.textContent = "Continue to Camp";
+            continueButton.addEventListener('click', this.onContinueClick);
+        }
+    },
+    
+    /**
+     * Set up shuffle screen (for 3→2 or other tribe shuffles)
+     */
+    setupShuffle() {
+        // Update title
+        const titleElement = document.querySelector('#tribe-division-screen h2');
+        if (titleElement) {
+            titleElement.textContent = "Tribe Shuffle!";
+        }
+        
+        // Add a subtitle
+        let subtitleElement = document.querySelector('#tribe-division-subtitle');
+        if (!subtitleElement) {
+            subtitleElement = document.createElement('p');
+            subtitleElement.id = 'tribe-division-subtitle';
+            subtitleElement.className = 'tribe-division-subtitle';
+            const titleElement = document.querySelector('#tribe-division-screen h2');
+            if (titleElement && titleElement.parentNode) {
+                titleElement.parentNode.insertBefore(subtitleElement, titleElement.nextSibling);
+            }
+        }
+        subtitleElement.textContent = "The tribes have been reorganized!";
+        
+        this.createTribeDisplays();
+        
+        // Update continue button text
+        const continueButton = document.getElementById('continue-to-challenge-button');
+        if (continueButton) {
+            continueButton.textContent = "Continue to Camp";
             continueButton.addEventListener('click', this.onContinueClick);
         }
     },
@@ -79,8 +126,10 @@ const TribeDivisionScreen = {
      */
     onContinueClick() {
         // Determine next state based on current state
-        if (gameManager.getGameState() === "merge") {
-            // After merge, go to camp
+        const currentState = gameManager.getGameState();
+        
+        if (currentState === "merge" || currentState === "tribeShuffle") {
+            // After merge or shuffle, go to camp
             gameManager.setGameState("camp");
         } else {
             // After initial division, go to first challenge

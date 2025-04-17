@@ -86,6 +86,12 @@ class GameManager {
                 TribeDivisionScreen.setupMerge();
                 break;
                 
+            case "tribeShuffle":
+                // Show tribe shuffle screen - tribes have already been reorganized
+                showScreen("tribe-division-screen");
+                TribeDivisionScreen.setupShuffle();
+                break;
+                
             case "camp":
                 this.energySystem.refillEnergy();
                 showScreen("camp-screen");
