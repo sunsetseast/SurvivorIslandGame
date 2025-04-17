@@ -109,9 +109,8 @@ button:disabled {
 /* Welcome Screen */
 #welcome-screen {
     text-align: center;
-    background-image: url('assets/welcome-bg.jpg');
-    background-size: cover;
-    background-position: center;
+    background-color: #1a75c0; /* Ocean blue */
+    background-image: linear-gradient(to bottom right, #1a75c0, #60c0dd);
     color: white;
     padding: 50px 20px;
     height: 600px;
