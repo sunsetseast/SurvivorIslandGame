@@ -160,14 +160,26 @@ class IdolSystem {
     startIdolSearch(hidingSpot) {
         // Get current location from CampScreen
         const campScreenElement = document.getElementById('camp-screen');
-        if (!campScreenElement) return;
+        if (!campScreenElement) {
+            console.error("Cannot find camp screen element");
+            return;
+        }
         
         // Look for the data-location attribute on the selected location button
         const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
-        if (!selectedLocationButton) return;
+        if (!selectedLocationButton) {
+            console.error("No location button selected");
+            return;
+        }
         
         const locationName = selectedLocationButton.getAttribute('data-location');
-        if (!locationName) return;
+        if (!locationName) {
+            console.error("Selected location button has no data-location attribute");
+            return;
+        }
+        
+        console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
+        console.log(`Current idol location: ${JSON.stringify(this.idolLocation)}`);
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
@@ -195,8 +207,13 @@ class IdolSystem {
                                  this.idolLocation.location === locationName && 
                                  this.idolLocation.hidingSpot === hidingSpot;
                 
+                console.log(`Idol found check: ${idolFound}`);
+                console.log(`Location match: ${this.idolLocation?.location === locationName}`);
+                console.log(`Hiding spot match: ${this.idolLocation?.hidingSpot === hidingSpot}`);
+                
                 // After a brief pause, show result
                 if (idolFound) {
+                    console.log("Found an idol! Giving to player.");
                     this.givePlayerIdol();
                     // Reset idol location for next time
                     this.resetIdolLocations();
@@ -209,8 +226,11 @@ class IdolSystem {
                         `Unfortunately, there's no idol hidden ${hidingSpot}.`
                     ];
                     
+                    const selectedMessage = getRandomItem(messages);
+                    console.log(`Didn't find idol. Message: ${selectedMessage}`);
+                    
                     this.gameManager.dialogueSystem.showDialogue(
-                        getRandomItem(messages),
+                        selectedMessage,
                         ["Continue"],
                         () => this.gameManager.dialogueSystem.hideDialogue()
                     );

@@ -586,6 +586,20 @@ const CampScreen = {
                     const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
                     text += `${ally.name}: ${relationship}\n`;
                 });
+                
+                // Since there are potential allies, offer to form an alliance
+                gameManager.dialogueSystem.showDialogue(
+                    text,
+                    ["Form an alliance", "Close"],
+                    (choice) => {
+                        if (choice === 0) {
+                            this.showFormAllianceScreen(potentialAllies);
+                        } else {
+                            gameManager.dialogueSystem.hideDialogue();
+                        }
+                    }
+                );
+                return;
             } else {
                 text += "You need to improve your relationships before you can form alliances.";
             }
@@ -601,6 +615,39 @@ const CampScreen = {
                 });
                 text += "\n";
             });
+            
+            // Suggest potential allies that aren't in any alliance with the player
+            const existingAllies = new Set();
+            alliances.forEach(alliance => {
+                alliance.members.forEach(member => {
+                    existingAllies.add(member.name);
+                });
+            });
+            
+            const potentialAllies = gameManager.allianceSystem.suggestPotentialAllies(player)
+                .filter(ally => !existingAllies.has(ally.name));
+            
+            if (potentialAllies.length > 0) {
+                text += "\nPotential new allies:\n";
+                potentialAllies.forEach(ally => {
+                    const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
+                    text += `${ally.name}: ${relationship}\n`;
+                });
+                
+                // Offer to form a new alliance
+                gameManager.dialogueSystem.showDialogue(
+                    text,
+                    ["Form a new alliance", "Close"],
+                    (choice) => {
+                        if (choice === 0) {
+                            this.showFormAllianceScreen(potentialAllies);
+                        } else {
+                            gameManager.dialogueSystem.hideDialogue();
+                        }
+                    }
+                );
+                return;
+            }
         }
         
         gameManager.dialogueSystem.showDialogue(
@@ -608,6 +655,80 @@ const CampScreen = {
             ["Close"],
             () => gameManager.dialogueSystem.hideDialogue()
         );
+    },
+    
+    /**
+     * Show the alliance formation screen
+     * @param {Array} potentialAllies - Array of potential allies
+     */
+    showFormAllianceScreen(potentialAllies) {
+        if (potentialAllies.length === 0) {
+            gameManager.dialogueSystem.showDialogue(
+                "You don't have any potential allies with a high enough relationship score.",
+                ["Close"],
+                () => gameManager.dialogueSystem.hideDialogue()
+            );
+            return;
+        }
+        
+        // Create choices for each potential ally
+        const choices = potentialAllies.map(ally => {
+            const relationship = gameManager.relationshipSystem.getRelationship(
+                gameManager.getPlayerSurvivor(), ally
+            );
+            return `${ally.name} (Relationship: ${relationship})`;
+        });
+        
+        // Add a cancel option
+        choices.push("Cancel");
+        
+        gameManager.dialogueSystem.showDialogue(
+            "Who do you want to form an alliance with?",
+            choices,
+            (choice) => {
+                if (choice === choices.length - 1) {
+                    // Cancel was selected
+                    this.viewAlliances();
+                    return;
+                }
+                
+                const selectedAlly = potentialAllies[choice];
+                this.formAllianceWith(selectedAlly);
+            }
+        );
+    },
+    
+    /**
+     * Form an alliance with a selected ally
+     * @param {Object} ally - The ally to form an alliance with
+     */
+    formAllianceWith(ally) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Create the alliance
+        const alliance = gameManager.allianceSystem.createAllianceBetween(player, ally);
+        
+        if (alliance) {
+            gameManager.dialogueSystem.showDialogue(
+                `You've formed an alliance with ${ally.name}! You agree to work together and protect each other in the game.`,
+                ["Great!"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    // Refresh alliances display
+                    this.viewAlliances();
+                }
+            );
+        } else {
+            gameManager.dialogueSystem.showDialogue(
+                `${ally.name} is hesitant to form an alliance right now. Try improving your relationship first.`,
+                ["OK"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    // Go back to alliances view
+                    this.viewAlliances();
+                }
+            );
+        }
     },
     
     /**
