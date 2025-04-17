@@ -220,9 +220,13 @@ function updateGameMenu() {
         if (allTribes && allTribes.length > 0) {
             // Show player's tribe first
             if (currentTribe) {
+                // Check if player tribe has immunity
+                const hasTribalImmunity = currentTribe.members.length > 0 && currentTribe.members[0].hasImmunity;
+                
                 tribeHTML += `
                     <div class="menu-tribe">
                         <strong>Your Tribe:</strong> <span style="color:${currentTribe.tribeColor}">${currentTribe.tribeName}</span>
+                        ${hasTribalImmunity ? ' <span style="color:gold; font-weight:bold;">(Immune)</span>' : ''}
                     </div>
                     <div class="menu-tribe">
                         <strong>Members:</strong>
@@ -231,7 +235,8 @@ function updateGameMenu() {
                 `;
                 
                 currentTribe.members.forEach(member => {
-                    tribeHTML += `<li>${member.name}${member.isPlayer ? ' (You)' : ''}</li>`;
+                    const hasIndividualImmunity = member.hasImmunity && gameManager.getGamePhase() === "postMerge";
+                    tribeHTML += `<li>${member.name}${member.isPlayer ? ' (You)' : ''}${hasIndividualImmunity ? ' <span style="color:gold;">★</span>' : ''}</li>`;
                 });
                 
                 tribeHTML += `</ul>`;
@@ -240,9 +245,13 @@ function updateGameMenu() {
             // Show other tribes
             allTribes.forEach(tribe => {
                 if (tribe !== currentTribe) {
+                    // Check if this tribe has immunity
+                    const hasTribalImmunity = tribe.members.length > 0 && tribe.members[0].hasImmunity;
+                    
                     tribeHTML += `
                         <div class="menu-tribe" style="margin-top: 15px;">
                             <strong>Tribe:</strong> <span style="color:${tribe.tribeColor}">${tribe.tribeName}</span>
+                            ${hasTribalImmunity ? ' <span style="color:gold; font-weight:bold;">(Immune)</span>' : ''}
                         </div>
                         <div class="menu-tribe">
                             <strong>Members:</strong>
@@ -251,7 +260,8 @@ function updateGameMenu() {
                     `;
                     
                     tribe.members.forEach(member => {
-                        tribeHTML += `<li>${member.name}</li>`;
+                        const hasIndividualImmunity = member.hasImmunity && gameManager.getGamePhase() === "postMerge";
+                        tribeHTML += `<li>${member.name}${hasIndividualImmunity ? ' <span style="color:gold;">★</span>' : ''}</li>`;
                     });
                     
                     tribeHTML += `</ul>`;
@@ -259,6 +269,15 @@ function updateGameMenu() {
             });
         } else {
             tribeHTML = '<div class="menu-empty">No tribe information available</div>';
+        }
+        
+        // Add a legend for immunity indicators if in post-merge phase
+        if (gamePhase === "postMerge") {
+            tribeHTML += `
+                <div style="margin-top: 15px; font-size: 0.9em;">
+                    <span style="color:gold;">★</span> = Has individual immunity
+                </div>
+            `;
         }
         
         tribeInfo.innerHTML = tribeHTML;
