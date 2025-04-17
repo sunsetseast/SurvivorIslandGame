@@ -52,6 +52,8 @@ const CampScreen = {
         const tribeNameElement = document.getElementById('tribe-name');
         const dayNumberElement = document.getElementById('day-number');
         const tribeColorImage = document.getElementById('tribe-color-image');
+        const energyValueElement = document.getElementById('energy-value');
+        const maxEnergyElement = document.getElementById('max-energy');
         
         const playerTribe = gameManager.getPlayerTribe();
         
@@ -65,6 +67,15 @@ const CampScreen = {
         
         if (tribeColorImage && playerTribe) {
             tribeColorImage.style.backgroundColor = playerTribe.tribeColor;
+        }
+        
+        // Update energy display
+        if (energyValueElement) {
+            energyValueElement.textContent = gameManager.energySystem.getCurrentEnergy();
+        }
+        
+        if (maxEnergyElement) {
+            maxEnergyElement.textContent = gameManager.energySystem.getMaxEnergy();
         }
     },
     

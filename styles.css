@@ -582,6 +582,30 @@ button:disabled {
     padding-bottom: 5px;
 }
 
+/* Energy Notification */
+@keyframes fadeOutUp {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
+
+.energy-notification {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: bold;
+    font-size: 18px;
+    animation: fadeOutUp 1.5s forwards;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;

@@ -31,10 +31,51 @@ class EnergySystem {
             return false;
         }
         
+        // Show energy deduction animation/notification
+        this.showEnergyChangeNotification(-amount);
+        
         this.currentEnergy -= amount;
         this.saveEnergyState();
         this.updateEnergyDisplay();
         return true;
+    }
+    
+    /**
+     * Show a visual notification of energy change
+     * @param {number} changeAmount - Amount of energy changed (positive or negative)
+     */
+    showEnergyChangeNotification(changeAmount) {
+        // Get energy display element
+        const energyDisplay = document.querySelector('.energy-display');
+        if (!energyDisplay) return;
+        
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'energy-notification';
+        notification.textContent = changeAmount > 0 ? `+${changeAmount}` : `${changeAmount}`;
+        notification.style.color = changeAmount > 0 ? '#4CAF50' : '#F44336';
+        notification.style.position = 'absolute';
+        notification.style.fontSize = '18px';
+        notification.style.fontWeight = 'bold';
+        notification.style.left = '50%';
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateY(0)';
+        notification.style.transition = 'transform 1s, opacity 1s';
+        
+        // Add to DOM
+        energyDisplay.style.position = 'relative';
+        energyDisplay.appendChild(notification);
+        
+        // Trigger animation
+        setTimeout(() => {
+            notification.style.transform = 'translateY(-30px)';
+            notification.style.opacity = '0';
+        }, 50);
+        
+        // Remove after animation
+        setTimeout(() => {
+            notification.remove();
+        }, 1200);
     }
     
     /**
@@ -52,6 +93,9 @@ class EnergySystem {
      * @param {number} amount - The amount of energy to add
      */
     addEnergy(amount = 1) {
+        // Show energy addition notification
+        this.showEnergyChangeNotification(+amount);
+        
         this.currentEnergy = Math.min(this.currentEnergy + amount, this.maxEnergy);
         this.saveEnergyState();
         this.updateEnergyDisplay();
@@ -125,6 +169,19 @@ class EnergySystem {
      * Update the energy display in the UI
      */
     updateEnergyDisplay() {
+        // Update camp screen displays
+        const energyValueDisplay = document.getElementById('energy-value');
+        const maxEnergyDisplay = document.getElementById('max-energy');
+        
+        if (energyValueDisplay) {
+            energyValueDisplay.textContent = this.currentEnergy;
+        }
+        
+        if (maxEnergyDisplay) {
+            maxEnergyDisplay.textContent = this.maxEnergy;
+        }
+        
+        // Update HUD displays (if any)
         const energyCountDisplay = document.getElementById('energy-count');
         const energyBarFill = document.getElementById('energy-bar-fill');
         const energyTimeDisplay = document.getElementById('energy-time');
@@ -139,6 +196,19 @@ class EnergySystem {
         
         if (energyTimeDisplay) {
             energyTimeDisplay.textContent = this.getTimeUntilNextEnergy();
+        }
+        
+        // Also update enable/disable state of action buttons based on energy
+        const actionButtons = document.querySelectorAll('.action-button');
+        if (actionButtons.length > 0) {
+            actionButtons.forEach(button => {
+                // Extract energy cost from button text
+                const match = button.textContent.match(/\((\d+) Energy\)/);
+                if (match) {
+                    const cost = parseInt(match[1]);
+                    button.disabled = this.currentEnergy < cost;
+                }
+            });
         }
     }
     
