@@ -290,13 +290,42 @@ function updateGameMenu() {
     if (inventory && player) {
         let inventoryHTML = '<div class="menu-inventory">';
         
-        if (player.hasIdol) {
-            inventoryHTML += '<div class="inventory-item">Hidden Immunity Idol</div>';
-        } else {
-            inventoryHTML += '<div class="inventory-empty">No items in inventory</div>';
+        // Show idol information
+        inventoryHTML += `<div class="inventory-item">
+            <p id="idol-status">Hidden Immunity Idol: ${player.hasIdol ? 'Yes' : 'No'}</p>
+        `;
+        
+        // Show total idols in play
+        let totalIdols = 0;
+        if (gameManager.idolSystem) {
+            totalIdols = gameManager.idolSystem.getIdolsInPlay();
+        }
+        inventoryHTML += `<p id="idols-in-play">Idols in Play: ${totalIdols}</p>`;
+        
+        // Show immunity status
+        const hasIndividualImmunity = player.hasImmunity;
+        const tribeHasImmunity = playerTribe.isImmune === true || 
+                             (playerTribe.members.some(member => member.hasImmunity) && 
+                              gameManager.getGamePhase() === "preMerge");
+        
+        const hasImmunity = hasIndividualImmunity || tribeHasImmunity;
+        
+        // Set the immunity text with more details
+        let immunityText = `Immunity: ${hasImmunity ? 'Yes' : 'No'}`;
+        
+        if (hasImmunity) {
+            if (gameManager.getGamePhase() === "preMerge") {
+                immunityText += " (Tribal)";
+            } else if (hasIndividualImmunity) {
+                immunityText += " (Individual)";
+            }
         }
         
+        inventoryHTML += `<p id="immunity-status">${immunityText}</p>`;
+        
+        // Close the inventory item div
         inventoryHTML += '</div>';
+        
         inventory.innerHTML = inventoryHTML;
     }
 }
@@ -328,8 +357,6 @@ function updateInventoryDisplay() {
         return;
     }
     
-    console.log(`Update inventory: Player ${player.name}, hasIdol: ${player.hasIdol}`);
-    
     // Update idol status
     idolStatus.textContent = `Hidden Immunity Idol: ${player.hasIdol ? 'Yes' : 'No'}`;
     
@@ -338,7 +365,6 @@ function updateInventoryDisplay() {
     
     if (gameManager.idolSystem) {
         totalIdols = gameManager.idolSystem.getIdolsInPlay();
-        console.log(`Total idols in play: ${totalIdols}`);
     }
     
     idolsInPlay.textContent = `Idols in Play: ${totalIdols}`;
@@ -385,9 +411,26 @@ function updateInventoryDisplay() {
         }
     }
     
-    // Update immunity status
-    const hasImmunity = player.hasImmunity || (playerTribe.members.some(member => member.hasImmunity) && gameManager.getGamePhase() === "preMerge");
-    immunityStatus.textContent = `Immunity: ${hasImmunity ? 'Yes' : 'No'}`;
+    // Update immunity status - check both individual immunity and tribe immunity
+    const hasIndividualImmunity = player.hasImmunity;
+    const tribeHasImmunity = playerTribe.isImmune === true || 
+                            (playerTribe.members.some(member => member.hasImmunity) && 
+                             gameManager.getGamePhase() === "preMerge");
+    
+    const hasImmunity = hasIndividualImmunity || tribeHasImmunity;
+    
+    // Set the immunity text with more details
+    let immunityText = `Immunity: ${hasImmunity ? 'Yes' : 'No'}`;
+    
+    if (hasImmunity) {
+        if (gameManager.getGamePhase() === "preMerge") {
+            immunityText += " (Tribal)";
+        } else if (hasIndividualImmunity) {
+            immunityText += " (Individual)";
+        }
+    }
+    
+    immunityStatus.textContent = immunityText;
 }
 
 // Handle window errors
