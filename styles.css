@@ -8,7 +8,10 @@
 
 body {
     background-color: #1a75c0; /* Ocean blue */
-    background-image: linear-gradient(to bottom, #1a75c0, #60c0dd);
+    background-image: url('Assets/island-bg.svg'), linear-gradient(to bottom, #1a75c0, #60c0dd);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     color: #333;
     min-height: 100vh;
     display: flex;
@@ -335,6 +338,33 @@ button:disabled {
 }
 
 /* Tribal Council */
+#tribal-council-screen {
+    background-color: #1e2124;
+    background-image: 
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%232d3237' fill-opacity='0.4'%3E%3Cpath d='M0 0h40v40H0V0zm40 40h40v40H40V40zm0-40h2l-2 2V0zm0 4l4-4h2l-6 6V4zm0 4l8-8h2L40 10V8zm0 4L52 0h2L40 14v-2zm0 4L56 0h2L40 18v-2zm0 4L60 0h2L40 22v-2zm0 4L64 0h2L40 26v-2zm0 4L68 0h2L40 30v-2zm0 4L72 0h2L40 34v-2zm0 4L76 0h2L40 38v-2zm0 4L80 0v2L42 40h-2zm4 0L80 4v2L46 40h-2zm4 0L80 8v2L50 40h-2zm4 0l28-28v2L54 40h-2zm4 0l24-24v2L58 40h-2zm4 0l20-20v2L62 40h-2zm4 0l16-16v2L66 40h-2zm4 0l12-12v2L70 40h-2zm4 0l8-8v2l-6 6h-2zm4 0l4-4v2l-2 2h-2z'/%3E%3C/g%3E%3C/svg%3E"),
+        radial-gradient(circle at center, rgba(50, 30, 10, 0.8) 0%, rgba(20, 12, 4, 0.9) 70%);
+    color: #f1f5f9;
+}
+
+#tribal-council-screen h2, 
+#tribal-council-screen h3 {
+    color: #ff8c00; /* Brighter orange for contrast */
+    text-shadow: 0 0 10px #ff6600, 0 0 20px #ff3300;
+}
+
+#tribal-council-screen p {
+    color: #f1f5f9;
+}
+
+#tribal-council-screen .big-button {
+    background-color: #ff8c00;
+}
+
+#tribal-council-screen #play-idol-button {
+    background-color: #ffc107; /* Bright gold for idol */
+    color: #333;
+}
+
 #voting-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -343,29 +373,41 @@ button:disabled {
 }
 
 .vote-card {
-    background-color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     padding: 10px;
     text-align: center;
     cursor: pointer;
     border: 2px solid transparent;
+    transition: all 0.3s;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    color: #f1f5f9;
+}
+
+.vote-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
 }
 
 .vote-card.immune {
-    background-color: #fef3c7; /* Light yellow for immune */
+    background-color: rgba(255, 193, 7, 0.2); /* Gold tint for immune */
     cursor: not-allowed;
+    border: 2px solid rgba(255, 193, 7, 0.5);
 }
 
 .vote-card.selected {
-    border-color: #e67700; /* Tribal torch orange */
+    border-color: #ff8c00; /* Bright orange for selection */
+    box-shadow: 0 0 15px rgba(255, 140, 0, 0.6);
 }
 
 .vote-portrait {
     width: 60px;
     height: 60px;
-    background-color: #cbd5e1;
+    background-color: #3f4550;
     border-radius: 50%;
     margin: 0 auto 10px;
+    border: 2px solid #ff8c00;
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
 }
 
 #votes-container {
@@ -374,10 +416,17 @@ button:disabled {
 
 .vote-entry {
     padding: 10px;
-    background-color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 5px;
     margin: 5px 0;
-    border-left: 4px solid #3b82f6;
+    border-left: 4px solid #ff8c00;
+    transition: all 0.5s;
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Dialogue System */
@@ -441,6 +490,96 @@ button:disabled {
 
 .dialogue-choice:hover {
     background-color: #e2e8f0;
+}
+
+/* Hamburger Menu */
+#hamburger-icon {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 35px;
+    height: 28px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+#hamburger-icon .bar1, 
+#hamburger-icon .bar2, 
+#hamburger-icon .bar3 {
+    width: 35px;
+    height: 5px;
+    background-color: #e67700; /* Tribal torch orange */
+    margin: 6px 0;
+    transition: 0.4s;
+    border-radius: 2px;
+}
+
+#hamburger-icon.change .bar1 {
+    transform: rotate(-45deg) translate(-8px, 6px);
+}
+
+#hamburger-icon.change .bar2 {
+    opacity: 0;
+}
+
+#hamburger-icon.change .bar3 {
+    transform: rotate(45deg) translate(-8px, -8px);
+}
+
+#game-menu {
+    position: fixed;
+    top: 0;
+    right: -350px;
+    width: 350px;
+    height: 100%;
+    background-color: #ffffff;
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.2);
+    transition: right 0.3s ease;
+    z-index: 9;
+    overflow-y: auto;
+}
+
+#game-menu.active {
+    right: 0;
+}
+
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #e67700; /* Tribal torch orange */
+    color: white;
+}
+
+.menu-header h3 {
+    color: white;
+    margin: 0;
+}
+
+#close-menu {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.menu-content {
+    padding: 20px;
+}
+
+.menu-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.menu-section h4 {
+    color: #2d8a50; /* Jungle green */
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
 }
 
 /* Utility Classes */

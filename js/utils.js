@@ -55,11 +55,13 @@ function showScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
     screens.forEach(screen => {
         screen.classList.remove('active');
+        screen.style.display = 'none';
     });
     
     const targetScreen = document.getElementById(screenId);
     if (targetScreen) {
         targetScreen.classList.add('active');
+        targetScreen.style.display = 'block';
     }
 }
 

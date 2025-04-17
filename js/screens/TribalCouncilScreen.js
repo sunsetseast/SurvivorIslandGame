@@ -178,40 +178,142 @@ const TribalCouncilScreen = {
             resultsContainer.classList.remove('hidden');
         }
         
-        // Show vote count
+        // Set up for vote reveal
         const votesContainer = document.getElementById('votes-container');
         if (votesContainer) {
             clearChildren(votesContainer);
             
-            Object.entries(voteCount).forEach(([name, count]) => {
+            // Prepare for one-by-one reveal
+            this.revealVotes(gameManager.tribalCouncilSystem.getVotes(), votesContainer, voteCount);
+        }
+    },
+    
+    /**
+     * Reveal votes one by one
+     * @param {Object} votes - Map of voters to their targets
+     * @param {HTMLElement} container - The container for vote entries
+     * @param {Object} voteCount - Final vote counts by name
+     */
+    revealVotes(votes, container, voteCount) {
+        // First, ask if anyone wants to play an idol
+        gameManager.dialogueSystem.showDialogue(
+            "Before I read the votes, if anyone has a hidden immunity idol and wants to play it, now would be the time to do so.",
+            ["Continue"],
+            () => {
+                gameManager.dialogueSystem.hideDialogue();
+                
+                // If player has an idol, highlight the idol button
+                const player = gameManager.getPlayerSurvivor();
+                if (player.hasIdol) {
+                    const idolButton = document.getElementById('play-idol-button');
+                    if (idolButton) {
+                        idolButton.classList.remove('hidden');
+                        idolButton.style.animation = 'pulse 1s infinite';
+                        
+                        // Wait 5 seconds for player to decide
+                        setTimeout(() => {
+                            idolButton.style.animation = '';
+                            this.startVoteReveal(votes, container, voteCount);
+                        }, 5000);
+                        
+                        return;
+                    }
+                }
+                
+                // If no idol to play, start vote reveal
+                this.startVoteReveal(votes, container, voteCount);
+            }
+        );
+    },
+    
+    /**
+     * Start revealing votes one by one
+     * @param {Object} votes - Map of voters to their targets
+     * @param {HTMLElement} container - The container for vote entries
+     * @param {Object} voteCount - Final vote counts by name
+     */
+    startVoteReveal(votes, container, voteCount) {
+        const entries = Object.entries(votes);
+        let index = 0;
+        
+        // Keep track of running vote count
+        const runningVoteCount = {};
+        
+        // Create initial counters
+        Object.keys(voteCount).forEach(name => {
+            runningVoteCount[name] = 0;
+        });
+        
+        // Reveal votes one by one
+        const revealNextVote = () => {
+            if (index < entries.length) {
+                const [voter, target] = entries[index];
+                
+                // Skip votes negated by idols
+                const targetHasPlayedIdol = gameManager.tribalCouncilSystem.immunePlayers.some(
+                    p => p.name === target.name && gameManager.tribalCouncilSystem.idolPlayed
+                );
+                
+                // Create vote entry
                 const voteEntry = createElement('div', {
                     className: 'vote-entry',
-                    textContent: `${name}: ${count} vote(s)`
+                    textContent: targetHasPlayedIdol 
+                        ? `${voter} voted for ${target.name} (NEGATED BY IDOL)`
+                        : `${voter} voted for ${target.name}`
                 });
                 
-                votesContainer.appendChild(voteEntry);
-            });
-        }
-        
-        // Show elimination text
-        const eliminationText = document.getElementById('elimination-text');
-        if (eliminationText) {
-            const eliminatedSurvivor = gameManager.tribalCouncilSystem.getEliminatedSurvivor();
-            
-            if (eliminatedSurvivor) {
-                eliminationText.textContent = `${eliminatedSurvivor.name} has been voted off Survivor Island!`;
+                // Add to container with animation
+                container.appendChild(voteEntry);
+                
+                // Update running count
+                if (!targetHasPlayedIdol && runningVoteCount.hasOwnProperty(target.name)) {
+                    runningVoteCount[target.name]++;
+                }
+                
+                // Reveal next vote after delay
+                index++;
+                setTimeout(revealNextVote, 1500);
             } else {
-                eliminationText.textContent = "No one was eliminated due to a special circumstance.";
+                // All votes revealed, show final count
+                const tallyHeader = createElement('h3', {
+                    textContent: "Final Vote Tally",
+                    style: "margin-top: 20px;"
+                });
+                container.appendChild(tallyHeader);
+                
+                Object.entries(voteCount).forEach(([name, count]) => {
+                    const summaryEntry = createElement('div', {
+                        className: 'vote-entry',
+                        textContent: `${name}: ${count} vote(s)`
+                    });
+                    container.appendChild(summaryEntry);
+                });
+                
+                // Show elimination text
+                const eliminationText = document.getElementById('elimination-text');
+                if (eliminationText) {
+                    const eliminatedSurvivor = gameManager.tribalCouncilSystem.getEliminatedSurvivor();
+                    
+                    if (eliminatedSurvivor) {
+                        eliminationText.textContent = `${eliminatedSurvivor.name} has been voted off Survivor Island!`;
+                    } else {
+                        eliminationText.textContent = "No one was eliminated due to a special circumstance.";
+                    }
+                }
+                
+                // Show continue button
+                const continueButton = document.getElementById('continue-after-vote-button');
+                if (continueButton) {
+                    continueButton.style.display = 'block';
+                    continueButton.addEventListener('click', () => {
+                        this.continueAfterVote();
+                    });
+                }
             }
-        }
+        };
         
-        // Set up continue button
-        const continueButton = document.getElementById('continue-after-vote-button');
-        if (continueButton) {
-            continueButton.addEventListener('click', () => {
-                this.continueAfterVote();
-            });
-        }
+        // Start reveal
+        revealNextVote();
     },
     
     /**

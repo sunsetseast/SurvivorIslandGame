@@ -32,3 +32,7 @@ waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "unity-hub --headless --no-sandbox --url unityhub://editor/2022.3.22f1 && cd $(pwd) && unity-editor -batchmode -nographics -projectPath . -buildTarget Android -executeMethod BuildPlayer.BuildAndroid -logFile - -quit; echo \"Starting web server...\"; cd Builds/WebGL && python -m http.server 5000"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80

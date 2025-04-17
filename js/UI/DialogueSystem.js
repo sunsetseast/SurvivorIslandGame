@@ -11,7 +11,7 @@ class DialogueSystem {
         this.onChoiceSelected = null;
         this.typewriterInterval = null;
         this.fullDialogueText = '';
-        this.useTypewriterEffect = true;
+        this.useTypewriterEffect = false; // Disabled typewriter effect
         this.typewriterSpeed = 50; // ms per character
     }
     

@@ -8,6 +8,44 @@
 </head>
 <body>
     <div id="game-container">
+        <!-- Hamburger Menu -->
+        <div id="hamburger-icon">
+            <div class="bar1"></div>
+            <div class="bar2"></div>
+            <div class="bar3"></div>
+        </div>
+        
+        <!-- Game Menu -->
+        <div id="game-menu" class="hidden">
+            <div class="menu-header">
+                <h3>Survivor Island Menu</h3>
+                <span id="close-menu">&times;</span>
+            </div>
+            <div class="menu-content">
+                <div id="player-stats-section" class="menu-section">
+                    <h4>Player Stats</h4>
+                    <div id="player-stats"></div>
+                </div>
+                <div id="game-info-section" class="menu-section">
+                    <h4>Game Information</h4>
+                    <div id="game-info"></div>
+                </div>
+                <div id="tribe-info-section" class="menu-section">
+                    <h4>Tribe Information</h4>
+                    <div id="tribe-info"></div>
+                </div>
+                <div id="inventory-section" class="menu-section">
+                    <h4>Inventory</h4>
+                    <div id="inventory"></div>
+                </div>
+                <div class="menu-buttons">
+                    <button id="save-game-button" class="menu-button">Save Game</button>
+                    <button id="load-game-button" class="menu-button">Load Game</button>
+                    <button id="help-button" class="menu-button">Help</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Welcome Screen -->
         <div id="welcome-screen" class="game-screen active">
             <h1>Survivor Island</h1>
