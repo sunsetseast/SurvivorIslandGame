@@ -28,26 +28,133 @@ class IdolSystem {
             return;
         }
         
-        // Create idol search minigame
-        this.startIdolSearch();
+        // Get current location
+        const location = gameManager.screens.CampScreen.selectedLocation;
+        if (!location) return;
+        
+        // Get location-specific hiding spots
+        const hidingSpots = this.getLocationHidingSpots(location.name);
+        
+        // Create idol search options
+        const choiceTexts = hidingSpots.map(spot => `Search ${spot}`);
+        
+        // Show search options dialogue
+        gameManager.dialogueSystem.showDialogue(
+            "Where would you like to search for a hidden immunity idol?",
+            choiceTexts,
+            (choice) => {
+                gameManager.dialogueSystem.hideDialogue();
+                this.startIdolSearch(hidingSpots[choice]);
+            }
+        );
+    }
+    
+    /**
+     * Get location-specific hiding spots for idols
+     * @param {string} locationName - The name of the location
+     * @returns {Array} Array of hiding spot names
+     */
+    getLocationHidingSpots(locationName) {
+        switch(locationName) {
+            case "Beach":
+                return [
+                    "under a pile of shells",
+                    "inside a small tidal cave",
+                    "buried in the sand",
+                    "in a coconut shell",
+                    "behind a large rock",
+                    "in a hollowed tree stump"
+                ];
+            case "Jungle":
+                return [
+                    "inside a hollow tree",
+                    "under a large boulder",
+                    "in a dense thicket",
+                    "high up in a tree",
+                    "in a small stream",
+                    "under a pile of fallen leaves"
+                ];
+            case "Camp":
+                return [
+                    "under the shelter",
+                    "buried near the tribe flag",
+                    "inside the water well",
+                    "in the firewood pile",
+                    "underneath the tribe bench",
+                    "inside a pot or container"
+                ];
+            case "Private Area":
+                return [
+                    "inside a small cave",
+                    "under a distinctive rock",
+                    "buried at the base of a dead tree",
+                    "in a bird's nest",
+                    "under a pile of stones",
+                    "wedged in a tree branch"
+                ];
+            default:
+                return [
+                    "under a rock",
+                    "in a tree",
+                    "buried in the ground",
+                    "inside a hollow log",
+                    "behind vegetation",
+                    "near the water"
+                ];
+        }
     }
     
     /**
      * Start idol search minigame
+     * @param {string} hidingSpot - The specific hiding spot being searched
      */
-    startIdolSearch() {
-        // For the web prototype, simplify to a random chance
-        const searchSuccess = Math.random() < 0.2; // 20% chance of finding an idol
+    startIdolSearch(hidingSpot) {
+        // Calculate search success chance based on location and hiding spot
+        // Some hiding spots are more likely to contain idols
+        let searchChance = 0.05; // Base 5% chance
         
-        if (searchSuccess) {
-            this.givePlayerIdol();
-        } else {
-            gameManager.dialogueSystem.showDialogue(
-                "You search carefully but don't find an immunity idol. Maybe try looking in another location?",
-                ["Continue"],
-                () => gameManager.dialogueSystem.hideDialogue()
-            );
+        // Certain hiding spots have higher chances
+        if (hidingSpot.includes("tree") || 
+            hidingSpot.includes("buried") || 
+            hidingSpot.includes("flag") ||
+            hidingSpot.includes("distinctive")) {
+            searchChance += 0.1; // +10% for classic hiding spots
         }
+        
+        // Player's mental stat affects chance
+        const player = this.gameManager.getPlayerSurvivor();
+        if (player) {
+            searchChance += (player.mentalStat - 50) / 200; // +/- up to 25% based on mental stat
+        }
+        
+        // Check for success
+        const searchSuccess = Math.random() < searchChance;
+        
+        // Show searching animation/message
+        gameManager.dialogueSystem.showDialogue(
+            `You carefully search ${hidingSpot}...`,
+            ["Continue searching..."],
+            () => {
+                // After a brief pause, show result
+                if (searchSuccess) {
+                    this.givePlayerIdol();
+                } else {
+                    // Create different messages for different results
+                    const messages = [
+                        `You search thoroughly ${hidingSpot} but find nothing unusual.`,
+                        `After looking carefully ${hidingSpot}, you come up empty-handed.`,
+                        `You dig and search ${hidingSpot} but don't find any idols.`,
+                        `Unfortunately, there's no idol hidden ${hidingSpot}.`
+                    ];
+                    
+                    gameManager.dialogueSystem.showDialogue(
+                        getRandomItem(messages),
+                        ["Continue"],
+                        () => gameManager.dialogueSystem.hideDialogue()
+                    );
+                }
+            }
+        );
     }
     
     /**
