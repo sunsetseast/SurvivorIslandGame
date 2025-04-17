@@ -35,8 +35,33 @@ class TribalCouncilSystem {
         
         // Determine which tribe is going to tribal council
         if (this.gameManager.getGamePhase() === "preMerge") {
-            // In pre-merge, the player's tribe always goes to tribal if they didn't win immunity
-            this.currentTribe = this.gameManager.getPlayerTribe();
+            const playerTribe = this.gameManager.getPlayerTribe();
+            
+            // Check if player's tribe won immunity
+            if (playerTribe.members.some(member => member.hasImmunity)) {
+                // Player's tribe won immunity, the other tribe goes to tribal
+                const losingTribeName = this.gameManager.challengeSystem.getLosingTribeName();
+                
+                // Find the losing tribe
+                const losingTribe = this.gameManager.getTribes().find(tribe => 
+                    tribe.tribeName === losingTribeName
+                );
+                
+                // If we have a valid losing tribe, use it
+                if (losingTribe) {
+                    this.currentTribe = losingTribe;
+                    this.simulateNPCTribalCouncil(); // Automatically handle NPC tribal council
+                    return;
+                }
+                
+                // Fallback if tribe not found
+                this.currentTribe = this.gameManager.getTribes().find(tribe => tribe !== playerTribe);
+                this.simulateNPCTribalCouncil();
+                return;
+            }
+            
+            // Player's tribe lost immunity, they go to tribal
+            this.currentTribe = playerTribe;
             
             // Check if any tribe member has immunity
             this.immunePlayers = this.currentTribe.members.filter(member => member.hasImmunity);
@@ -46,6 +71,47 @@ class TribalCouncilSystem {
             
             // Get players with immunity
             this.immunePlayers = this.gameManager.challengeSystem.getImmunePlayers();
+        }
+    }
+    
+    /**
+     * Simulate tribal council for NPC tribe
+     * (Happens when player's tribe wins immunity)
+     */
+    simulateNPCTribalCouncil() {
+        if (!this.currentTribe) return;
+        
+        // Check if any NPCs have immunity
+        this.immunePlayers = this.currentTribe.members.filter(member => member.hasImmunity);
+        
+        // Have all NPCs vote
+        this.generateNPCVotes();
+        
+        // Count votes to determine elimination
+        const voteResults = this.countVotes();
+        
+        // If there's a tie, handle it automatically
+        if (voteResults.isTied) {
+            // Process revote
+            const revoteResults = this.handleTieVote(voteResults.tiedPlayers);
+            
+            // If still tied, go to rock draw
+            if (revoteResults.stillTied) {
+                this.drawRocks(revoteResults.tiedPlayers);
+            }
+        }
+        
+        // Process elimination
+        if (this.eliminatedSurvivor) {
+            // Show a dialogue revealing who was eliminated from the other tribe
+            this.gameManager.dialogueSystem.showDialogue(
+                `At tribal council, the ${this.currentTribe.tribeName} tribe has voted out ${this.eliminatedSurvivor.name}.`,
+                ["Continue"],
+                () => {
+                    this.gameManager.dialogueSystem.hideDialogue();
+                    this.gameManager.eliminateSurvivor(this.eliminatedSurvivor);
+                }
+            );
         }
     }
     

@@ -5,18 +5,14 @@ class ChallengeSystem {
         this.challenges = challengeDatabase;
         this.currentChallenge = null;
         
-        // Challenge gameplay state
-        this.playerProgress = 0;
-        this.aiProgress = {};
-        this.targetProgress = 100;
-        this.tapIncrement = 5;
-        this.aiIncrementBase = 3;
-        this.challengeActive = false;
-        this.competingTribes = [];
-        this.competingIndividuals = [];
-        this.individualWinner = null;
+        // Challenge state variables
+        this.challengeCompleted = false;
+        this.tribeProgress = new Map();
+        this.survivorProgress = new Map();
         this.tribeWinner = null;
+        this.individualWinner = null;
         this.immunePlayers = [];
+        this.losingTribeName = null; // Track the tribe going to tribal
     }
     
     /**
@@ -24,63 +20,72 @@ class ChallengeSystem {
      */
     initialize() {
         this.currentChallenge = null;
-        this.playerProgress = 0;
-        this.aiProgress = {};
-        this.challengeActive = false;
-        this.competingTribes = [];
-        this.competingIndividuals = [];
-        this.individualWinner = null;
+        this.challengeCompleted = false;
+        this.tribeProgress = new Map();
+        this.survivorProgress = new Map();
         this.tribeWinner = null;
+        this.individualWinner = null;
         this.immunePlayers = [];
+        this.losingTribeName = null;
     }
     
     /**
      * Start a new challenge
      */
     startChallenge() {
-        // Determine challenge type based on game phase
-        const challengeType = this.gameManager.getGamePhase() === "preMerge" ? "tribe" : "individual";
+        // Reset state
+        this.challengeCompleted = false;
+        this.tribeProgress = new Map();
+        this.survivorProgress = new Map();
         
-        // Filter challenges by type
-        const eligibleChallenges = this.challenges.filter(c => c.type === challengeType);
+        // Determine challenge type based on game phase
+        const gamePhase = this.gameManager.getGamePhase();
+        const challengeType = gamePhase === "preMerge" ? "tribe" : "individual";
+        
+        // Define a list of challenge types with primary and secondary stats
+        const challengeTypes = [
+            { 
+                title: "Obstacle Course", 
+                description: "Navigate through a complex obstacle course as quickly as possible.",
+                type: challengeType,
+                primaryStat: "physical",
+                secondaryStat: "mental"
+            },
+            { 
+                title: "Endurance Challenge", 
+                description: "Hold a difficult position for as long as possible.",
+                type: challengeType,
+                primaryStat: "physical",
+                secondaryStat: "personality"
+            },
+            { 
+                title: "Puzzle Challenge", 
+                description: "Solve complex puzzles under pressure.",
+                type: challengeType,
+                primaryStat: "mental",
+                secondaryStat: "personality"
+            },
+            { 
+                title: "Balance Challenge", 
+                description: "Maintain balance on an unstable platform.",
+                type: challengeType,
+                primaryStat: "physical",
+                secondaryStat: "mental"
+            },
+            { 
+                title: "Memory Challenge", 
+                description: "Memorize and recall a sequence of symbols.",
+                type: challengeType,
+                primaryStat: "mental",
+                secondaryStat: "physical"
+            }
+        ];
         
         // Select a random challenge
-        this.currentChallenge = eligibleChallenges[getRandomInt(0, eligibleChallenges.length - 1)];
-        
-        // Reset progress values
-        this.playerProgress = 0;
-        this.aiProgress = {};
-        this.challengeActive = true;
-        
-        // Determine competitors
-        if (challengeType === "tribe") {
-            this.competingTribes = this.gameManager.getTribes();
-            this.competingIndividuals = [];
-            
-            // Initialize tribe progress
-            this.competingTribes.forEach(tribe => {
-                this.aiProgress[tribe.tribeName] = 0;
-            });
-        } else {
-            this.competingTribes = [];
-            this.competingIndividuals = [];
-            
-            // Add all remaining survivors
-            this.gameManager.getTribes().forEach(tribe => {
-                tribe.members.forEach(member => {
-                    this.competingIndividuals.push(member);
-                    if (!member.isPlayer) {
-                        this.aiProgress[member.name] = 0;
-                    }
-                });
-            });
-        }
+        this.currentChallenge = challengeTypes[Math.floor(Math.random() * challengeTypes.length)];
         
         // Set up UI
         this.updateChallengeUI();
-        
-        // Start AI progress updates
-        this.aiUpdateInterval = setInterval(() => this.updateAIProgress(), 500);
     }
     
     /**
@@ -100,16 +105,13 @@ class ChallengeSystem {
             challengeDescription.textContent = this.currentChallenge.description;
         }
         
-        if (challengeProgress) {
-            challengeProgress.style.width = formatProgressWidth(this.playerProgress, this.targetProgress);
-        }
-        
+        // Update the button state
         if (challengeButton) {
-            if (!this.challengeActive) {
-                challengeButton.textContent = "Start Challenge";
+            if (this.challengeCompleted) {
+                challengeButton.textContent = "Continue";
                 challengeButton.disabled = false;
             } else {
-                challengeButton.textContent = "Tap!";
+                challengeButton.textContent = "Start Challenge";
                 challengeButton.disabled = false;
             }
         }
@@ -130,189 +132,309 @@ class ChallengeSystem {
         
         if (this.currentChallenge.type === "tribe") {
             // Tribe challenge display
-            this.competingTribes.forEach(tribe => {
+            const tribes = this.gameManager.getTribes();
+            const playerTribe = this.gameManager.getPlayerTribe();
+            
+            tribes.forEach(tribe => {
                 const tribeBox = createElement('div', { className: 'competitor-box' });
                 
                 const tribeName = createElement('div', { 
                     className: 'competitor-name',
                     textContent: tribe.tribeName
                 });
+                
                 tribeName.style.color = tribe.tribeColor;
+                
+                if (tribe === playerTribe) {
+                    tribeName.innerHTML += " <span style='color: #3182ce'>(Your Tribe)</span>";
+                }
                 
                 const progressBar = createElement('div', { className: 'progress-bar' });
                 const progressFill = createElement('div', { className: 'progress-fill' });
-                progressFill.style.width = formatProgressWidth(this.aiProgress[tribe.tribeName] || 0, this.targetProgress);
+                
+                // Display progress if challenge is running
+                const progress = this.tribeProgress.get(tribe) || 0;
+                progressFill.style.width = formatProgressWidth(progress, 100);
                 progressBar.appendChild(progressFill);
+                
+                // Show tribe stats for clarity
+                const physicalAvg = this.getTribeAverageStat(tribe, "physical");
+                const mentalAvg = this.getTribeAverageStat(tribe, "mental");
+                const healthLevel = tribe.health || 100;
+                
+                const statsText = createElement('div', {
+                    className: 'stats-text',
+                    textContent: `Average Stats: Physical ${Math.round(physicalAvg)}, Mental ${Math.round(mentalAvg)}, Health ${healthLevel}`
+                });
                 
                 tribeBox.appendChild(tribeName);
                 tribeBox.appendChild(progressBar);
+                tribeBox.appendChild(statsText);
                 
                 competitorsContainer.appendChild(tribeBox);
             });
         } else {
             // Individual challenge display
-            this.competingIndividuals.forEach(individual => {
-                const individualBox = createElement('div', { className: 'competitor-box' });
+            const survivors = [];
+            const currentTribe = this.gameManager.getPlayerTribe();
+            const player = this.gameManager.getPlayerSurvivor();
+            
+            currentTribe.members.forEach(member => {
+                survivors.push(member);
+            });
+            
+            survivors.forEach(survivor => {
+                const survivorBox = createElement('div', { className: 'competitor-box' });
                 
-                const individualName = createElement('div', { 
+                const survivorName = createElement('div', { 
                     className: 'competitor-name',
-                    textContent: individual.name
+                    textContent: survivor.name
                 });
                 
-                if (individual.isPlayer) {
-                    individualName.style.color = '#3182ce'; // Blue for player
+                if (survivor.isPlayer) {
+                    survivorName.innerHTML += " <span style='color: #3182ce'>(You)</span>";
                 }
                 
                 const progressBar = createElement('div', { className: 'progress-bar' });
                 const progressFill = createElement('div', { className: 'progress-fill' });
-                progressFill.style.width = formatProgressWidth(
-                    individual.isPlayer ? this.playerProgress : (this.aiProgress[individual.name] || 0),
-                    this.targetProgress
-                );
+                
+                // Display progress if challenge is running
+                const progress = this.survivorProgress.get(survivor) || 0;
+                progressFill.style.width = formatProgressWidth(progress, 100);
                 progressBar.appendChild(progressFill);
                 
-                individualBox.appendChild(individualName);
-                individualBox.appendChild(progressBar);
+                // Show individual stats for clarity
+                const physical = survivor.physicalStat || 50;
+                const mental = survivor.mentalStat || 50;
+                const health = survivor.health || 100;
                 
-                competitorsContainer.appendChild(individualBox);
+                const statsText = createElement('div', {
+                    className: 'stats-text',
+                    textContent: `Stats: Physical ${physical}, Mental ${mental}` + 
+                        (survivor.isPlayer ? `, Health ${health}` : '')
+                });
+                
+                survivorBox.appendChild(survivorName);
+                survivorBox.appendChild(progressBar);
+                survivorBox.appendChild(statsText);
+                
+                competitorsContainer.appendChild(survivorBox);
             });
         }
     }
     
     /**
-     * Handle challenge button press
+     * Handle challenge button press - now just starts the automated challenge
      */
     onChallengeButtonPressed() {
-        if (!this.challengeActive) {
-            this.startChallenge();
+        if (this.challengeCompleted) {
+            const challengeButton = document.getElementById('challenge-button');
+            if (challengeButton) {
+                challengeButton.disabled = true;
+            }
+            
+            // Determine which state to go to next
+            let nextState;
+            
+            // In pre-merge phase with tribe challenges:
+            if (this.currentChallenge.type === "tribe" && 
+                this.gameManager.getGamePhase() === "preMerge") {
+                
+                if (this.tribeWinner === this.gameManager.getPlayerTribe()) {
+                    // Player's tribe won immunity - skip tribal council
+                    nextState = "camp";
+                } else {
+                    // Player's tribe lost immunity - go to tribal council
+                    nextState = "tribalCouncil";
+                }
+            } 
+            // In post-merge phase with individual challenges:
+            else if (this.currentChallenge.type === "individual") {
+                // Everyone goes to tribal, but some players have immunity
+                nextState = "tribalCouncil";
+            } 
+            // Default fallback
+            else {
+                nextState = "tribalCouncil";
+            }
+            
+            // Proceed to next state
+            this.gameManager.advanceDay();
+            this.gameManager.setGameState(nextState);
             return;
         }
         
-        // Increment player progress
-        this.playerProgress += this.tapIncrement;
-        
-        // Update progress bar
-        const challengeProgress = document.getElementById('challenge-progress-bar');
-        if (challengeProgress) {
-            challengeProgress.style.width = formatProgressWidth(this.playerProgress, this.targetProgress);
+        const challengeButton = document.getElementById('challenge-button');
+        if (challengeButton) {
+            challengeButton.disabled = true;
         }
         
-        // Update player progress in competitors display
-        this.updateCompetitorsDisplay();
-        
-        // Check if challenge is complete
-        if (this.playerProgress >= this.targetProgress) {
-            this.completeChallenge(true);
-        }
+        // Show challenge is starting
+        this.gameManager.dialogueSystem.showDialogue(
+            "The challenge is about to begin! This challenge will test " + 
+            (this.currentChallenge.primaryStat === "physical" ? "physical strength and endurance." : 
+             this.currentChallenge.primaryStat === "mental" ? "mental ability and puzzle-solving." : 
+             "social skills and adaptability."),
+            ["Watch Challenge"],
+            () => {
+                this.gameManager.dialogueSystem.hideDialogue();
+                
+                // Run the automated challenge based on stats
+                if (this.currentChallenge.type === "tribe") {
+                    this.runAutomatedTribeChallenge();
+                } else {
+                    this.runAutomatedIndividualChallenge();
+                }
+            }
+        );
     }
     
     /**
-     * Update AI competitors during challenge
+     * Run the automated tribe challenge based on tribe stats
      */
-    updateAIProgress() {
-        if (!this.challengeActive) return;
-        
-        // Calculate AI progress increment based on challenge type
-        if (this.currentChallenge.type === "tribe") {
-            this.updateTribeChallenge();
-        } else {
-            this.updateIndividualChallenge();
-        }
-        
-        // Update the UI
-        this.updateCompetitorsDisplay();
-    }
-    
-    /**
-     * Update tribe challenge progress
-     */
-    updateTribeChallenge() {
-        // Find player's tribe
+    runAutomatedTribeChallenge() {
+        // Get all tribes
+        const allTribes = this.gameManager.getTribes();
         const playerTribe = this.gameManager.getPlayerTribe();
         
-        // Update progress for other tribes
-        this.competingTribes.forEach(tribe => {
-            if (tribe === playerTribe) return;
+        // Calculate scores for each tribe
+        const tribeScores = new Map();
+        
+        allTribes.forEach(tribe => {
+            // Get average stats for the primary and secondary challenge stats
+            const primaryStatAvg = this.getTribeAverageStat(tribe, this.currentChallenge.primaryStat || "physical");
+            const secondaryStatAvg = this.getTribeAverageStat(tribe, this.currentChallenge.secondaryStat || "mental");
             
-            // Calculate progress based on tribe stats
-            let statMultiplier = 1.0;
-            switch (this.currentChallenge.primaryStat) {
-                case "physical":
-                    statMultiplier = this.getTribeAverageStat(tribe, "physical") / 100;
-                    break;
-                case "mental":
-                    statMultiplier = this.getTribeAverageStat(tribe, "mental") / 100;
-                    break;
-                case "personality":
-                    statMultiplier = this.getTribeAverageStat(tribe, "personality") / 100;
-                    break;
-            }
+            // Calculate score based on weighted stat averages
+            let score = (primaryStatAvg * 0.7) + (secondaryStatAvg * 0.3);
             
-            // Apply resource factor
-            const resourceFactor = this.getTribeResourceFactor(tribe);
+            // Apply tribe health factor (0.8 to 1.2)
+            const healthFactor = tribe.health / 100 * 0.4 + 0.8; // 0.8 at health=0, 1.2 at health=100
+            score *= healthFactor;
             
-            // Calculate increment
-            let increment = this.aiIncrementBase * statMultiplier * resourceFactor * this.currentChallenge.difficulty;
+            // Apply some randomness (±10%)
+            const randomFactor = 0.9 + Math.random() * 0.2;
+            score *= randomFactor;
             
-            // Add some randomness
-            increment *= 0.8 + Math.random() * 0.4; // 0.8 to 1.2
-            
-            // Update tribe progress
-            if (!this.aiProgress[tribe.tribeName]) {
-                this.aiProgress[tribe.tribeName] = 0;
-            }
-            this.aiProgress[tribe.tribeName] += increment;
-            
-            // Check if any tribe completed the challenge
-            if (this.aiProgress[tribe.tribeName] >= this.targetProgress) {
-                this.tribeWinner = tribe;
-                this.completeChallenge(false);
-            }
+            // Store the score
+            tribeScores.set(tribe, score);
         });
+        
+        // Animate progression of all tribes
+        this.animateTribeChallenge(tribeScores, playerTribe);
     }
     
     /**
-     * Update individual challenge progress
+     * Animate the tribe challenge progression and show results
+     * @param {Map} tribeScores - Map of tribes to their scores
+     * @param {Object} playerTribe - The player's tribe
      */
-    updateIndividualChallenge() {
-        const playerSurvivor = this.gameManager.getPlayerSurvivor();
+    animateTribeChallenge(tribeScores, playerTribe) {
+        const allTribes = Array.from(tribeScores.keys());
+        const maxScore = Math.max(...Array.from(tribeScores.values()));
+        const winningTribe = allTribes.find(tribe => tribeScores.get(tribe) === maxScore);
         
-        // Update progress for other survivors
-        this.competingIndividuals.forEach(survivor => {
-            if (survivor.isPlayer) return;
-            
-            // Calculate progress based on survivor stats
-            let statMultiplier = 1.0;
-            switch (this.currentChallenge.primaryStat) {
-                case "physical":
-                    statMultiplier = survivor.physicalStat / 100;
-                    break;
-                case "mental":
-                    statMultiplier = survivor.mentalStat / 100;
-                    break;
-                case "personality":
-                    statMultiplier = survivor.personalityStat / 100;
-                    break;
-            }
-            
-            // Calculate increment
-            let increment = this.aiIncrementBase * statMultiplier * this.currentChallenge.difficulty;
-            
-            // Add some randomness
-            increment *= 0.8 + Math.random() * 0.4; // 0.8 to 1.2
-            
-            // Update survivor progress
-            if (!this.aiProgress[survivor.name]) {
-                this.aiProgress[survivor.name] = 0;
-            }
-            this.aiProgress[survivor.name] += increment;
-            
-            // Check if any survivor completed the challenge
-            if (this.aiProgress[survivor.name] >= this.targetProgress) {
-                this.individualWinner = survivor;
-                this.completeChallenge(false);
-            }
+        // Update UI to show challenge in progress
+        const challengeDescription = document.getElementById('challenge-description');
+        if (challengeDescription) {
+            challengeDescription.textContent = "Tribes are competing...";
+        }
+        
+        // Set progress for visualization
+        allTribes.forEach(tribe => {
+            const progress = (tribeScores.get(tribe) / maxScore) * 100;
+            this.tribeProgress.set(tribe, progress);
         });
+        
+        // Simulate progress update animation
+        let step = 0;
+        const totalSteps = 10;
+        
+        const updateAnimation = () => {
+            step++;
+            this.updateCompetitorsDisplay();
+            
+            if (step < totalSteps) {
+                setTimeout(updateAnimation, 500);
+            } else {
+                // Find losing tribe for tribal council
+                const losingTribes = allTribes.filter(tribe => tribe !== winningTribe);
+                if (losingTribes.length > 0) {
+                    this.losingTribeName = losingTribes[0].tribeName;
+                }
+                
+                // Challenge complete - determine winner
+                this.tribeWinner = winningTribe;
+                const playerWon = (winningTribe === playerTribe);
+                this.completeChallenge(playerWon);
+            }
+        };
+        
+        updateAnimation();
+    }
+    
+    /**
+     * Run the automated individual challenge based on survivor stats
+     */
+    runAutomatedIndividualChallenge() {
+        // Get current tribe members
+        const currentTribe = this.gameManager.getPlayerTribe();
+        const allSurvivors = currentTribe.members;
+        const player = this.gameManager.getPlayerSurvivor();
+        
+        // Calculate scores for each survivor
+        const survivorScores = new Map();
+        
+        allSurvivors.forEach(survivor => {
+            // Get stats relevant to the challenge
+            const primaryStat = survivor[this.currentChallenge.primaryStat + "Stat"] || survivor.physicalStat;
+            const secondaryStat = survivor[this.currentChallenge.secondaryStat + "Stat"] || survivor.mentalStat;
+            
+            // Calculate score based on weighted stats
+            let score = (primaryStat * 0.7) + (secondaryStat * 0.3);
+            
+            // Apply health factor for player
+            if (survivor.isPlayer && survivor.health !== undefined) {
+                const healthFactor = survivor.health / 100 * 0.4 + 0.8; // 0.8 at health=0, 1.2 at health=100
+                score *= healthFactor;
+            }
+            
+            // Apply some randomness (±15%)
+            const randomFactor = 0.85 + Math.random() * 0.3;
+            score *= randomFactor;
+            
+            // Store the score
+            survivorScores.set(survivor, score);
+        });
+        
+        // Run a tournament-style elimination
+        this.runIndividualTournament(survivorScores, player);
+    }
+    
+    /**
+     * Run a tournament-style elimination for individual challenges
+     * @param {Map} survivorScores - Map of survivors to their scores
+     * @param {Object} player - The player survivor object
+     */
+    runIndividualTournament(survivorScores, player) {
+        const survivors = Array.from(survivorScores.keys());
+        
+        // Sort survivors by score from highest to lowest
+        survivors.sort((a, b) => survivorScores.get(b) - survivorScores.get(a));
+        
+        // The highest scorer is the winner
+        this.individualWinner = survivors[0];
+        const playerWon = (this.individualWinner === player);
+        
+        // Show tournament progression
+        this.gameManager.dialogueSystem.showDialogue(
+            `After several rounds of competition, ${this.individualWinner.name} has won individual immunity!`,
+            ["Continue"],
+            () => {
+                this.gameManager.dialogueSystem.hideDialogue();
+                this.completeChallenge(playerWon);
+            }
+        );
     }
     
     /**
@@ -320,14 +442,7 @@ class ChallengeSystem {
      * @param {boolean} playerWon - Whether the player won
      */
     completeChallenge(playerWon) {
-        this.challengeActive = false;
-        clearInterval(this.aiUpdateInterval);
-        
-        // Disable challenge button
-        const challengeButton = document.getElementById('challenge-button');
-        if (challengeButton) {
-            challengeButton.disabled = true;
-        }
+        this.challengeCompleted = true;
         
         if (this.currentChallenge.type === "tribe") {
             this.completeTribeChallenge(playerWon);
@@ -336,7 +451,7 @@ class ChallengeSystem {
         }
         
         // Show continue button
-        setTimeout(() => this.showContinueButton(), 2000);
+        this.showContinueButton();
     }
     
     /**
@@ -372,6 +487,7 @@ class ChallengeSystem {
             
             if (this.tribeWinner === playerTribe) {
                 resultText += "\nYour tribe is safe from Tribal Council tonight.";
+                resultText += "\nThe other tribe must vote someone out.";
             } else {
                 resultText += "\nYour tribe must attend Tribal Council tonight.";
                 resultText += "\nLosing the challenge has depleted some of your tribe's resources.";
@@ -431,38 +547,6 @@ class ChallengeSystem {
         if (challengeButton) {
             challengeButton.textContent = "Continue";
             challengeButton.disabled = false;
-            
-            // Create a new event listener for the continue button
-            challengeButton.onclick = () => {
-                // Determine which state to go to next
-                let nextState;
-                
-                // In pre-merge phase with tribe challenges:
-                if (this.currentChallenge.type === "tribe" && 
-                    this.gameManager.getGamePhase() === "preMerge") {
-                    
-                    if (this.tribeWinner === this.gameManager.getPlayerTribe()) {
-                        // Player's tribe won immunity - skip tribal council
-                        nextState = "camp";
-                    } else {
-                        // Player's tribe lost immunity - go to tribal council
-                        nextState = "tribalCouncil";
-                    }
-                } 
-                // In post-merge phase with individual challenges:
-                else if (this.currentChallenge.type === "individual") {
-                    // Everyone goes to tribal, but some players have immunity
-                    nextState = "tribalCouncil";
-                } 
-                // Default fallback
-                else {
-                    nextState = "tribalCouncil";
-                }
-                
-                // Proceed to next state
-                this.gameManager.advanceDay();
-                this.gameManager.setGameState(nextState);
-            };
         }
     }
     
@@ -506,5 +590,13 @@ class ChallengeSystem {
      */
     getImmunePlayers() {
         return this.immunePlayers;
+    }
+    
+    /**
+     * Get the name of the losing tribe that needs to go to tribal council
+     * @returns {string|null} The name of the losing tribe or null if not applicable
+     */
+    getLosingTribeName() {
+        return this.losingTribeName;
     }
 }
