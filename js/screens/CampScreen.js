@@ -90,9 +90,18 @@ const CampScreen = {
         const waterValue = document.getElementById('water-value');
         const foodValue = document.getElementById('food-value');
         
+        // Get references to health bars
+        const tribeHealthBar = document.getElementById('tribe-health-bar');
+        const tribeHealthValue = document.getElementById('tribe-health-value');
+        const playerHealthBar = document.getElementById('player-health-bar');
+        const playerHealthValue = document.getElementById('player-health-value');
+        
         const playerTribe = gameManager.getPlayerTribe();
         if (!playerTribe) return;
         
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Update resource bars
         if (fireBar) {
             fireBar.style.width = formatProgressWidth(playerTribe.fire, 100);
         }
@@ -105,6 +114,7 @@ const CampScreen = {
             foodBar.style.width = formatProgressWidth(playerTribe.food, 100);
         }
         
+        // Update resource values
         if (fireValue) {
             fireValue.textContent = playerTribe.fire;
         }
@@ -115,6 +125,42 @@ const CampScreen = {
         
         if (foodValue) {
             foodValue.textContent = playerTribe.food;
+        }
+        
+        // Update health bars
+        if (tribeHealthBar && playerTribe.health !== undefined) {
+            tribeHealthBar.style.width = formatProgressWidth(playerTribe.health, 100);
+            
+            // Update color based on health level
+            if (playerTribe.health < 30) {
+                tribeHealthBar.style.backgroundColor = '#dc3545'; // Red (critical)
+            } else if (playerTribe.health < 60) {
+                tribeHealthBar.style.backgroundColor = '#ffc107'; // Yellow (warning)
+            } else {
+                tribeHealthBar.style.backgroundColor = '#28a745'; // Green (good)
+            }
+        }
+        
+        if (tribeHealthValue && playerTribe.health !== undefined) {
+            tribeHealthValue.textContent = playerTribe.health;
+        }
+        
+        // Update player health if available
+        if (playerHealthBar && player && player.health !== undefined) {
+            playerHealthBar.style.width = formatProgressWidth(player.health, 100);
+            
+            // Update color based on health level
+            if (player.health < 30) {
+                playerHealthBar.style.backgroundColor = '#dc3545'; // Red (critical)
+            } else if (player.health < 60) {
+                playerHealthBar.style.backgroundColor = '#ffc107'; // Yellow (warning)
+            } else {
+                playerHealthBar.style.backgroundColor = '#28a745'; // Green (good)
+            }
+        }
+        
+        if (playerHealthValue && player && player.health !== undefined) {
+            playerHealthValue.textContent = player.health;
         }
     },
     
@@ -404,9 +450,40 @@ const CampScreen = {
         // Add 1 energy
         gameManager.energySystem.addEnergy(1);
         
+        // Also improve player health through rest
+        gameManager.playerRest();
+        
         // Show result message
-        const message = "You took some time to rest and recovered some energy.";
+        const message = "You took some time to rest and recovered some energy and health.";
         this.showActionResult(message);
+        
+        // Update resource display to show health changes
+        this.updateResourceDisplay();
+    },
+    
+    /**
+     * Personal health actions
+     */
+    performPersonalHealthAction(actionType) {
+        let success = false;
+        let message = "";
+        
+        switch(actionType) {
+            case 'eat':
+                success = gameManager.playerEat();
+                break;
+            case 'drink':
+                success = gameManager.playerDrink();
+                break;
+            case 'rest':
+                success = gameManager.playerRest();
+                break;
+        }
+        
+        if (success) {
+            // Update resource display to show health changes
+            this.updateResourceDisplay();
+        }
     },
     
     /**

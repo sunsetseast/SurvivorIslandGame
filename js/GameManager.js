@@ -118,6 +118,9 @@ class GameManager {
         this.playerCharacter = deepCopy(survivor);
         this.playerCharacter.isPlayer = true;
         
+        // Add health property to player
+        this.playerCharacter.health = 100;
+        
         // Create tribes
         this.createTribes();
         
@@ -289,6 +292,12 @@ class GameManager {
         // Clear immunity
         this.clearImmunity();
         
+        // Update tribe health based on resources
+        this.updateTribeHealth();
+        
+        // Update player health based on tribe health and recent actions
+        this.updatePlayerHealth();
+        
         // Process NPC alliance formations
         this.allianceSystem.processNPCAllianceFormations();
         
@@ -297,6 +306,201 @@ class GameManager {
         
         // Check for merge
         this.checkForMerge();
+    }
+    
+    /**
+     * Update player health based on tribe health and personal actions
+     */
+    updatePlayerHealth() {
+        const player = this.getPlayerSurvivor();
+        if (!player) return;
+        
+        const tribe = this.getPlayerTribe();
+        if (!tribe) return;
+        
+        // Player health is influenced by:
+        // 1. Tribe health (if tribe is healthy, player has a better baseline)
+        // 2. Recent personal actions (eating, drinking, resting)
+        
+        // If tribe health is critical, player health naturally decreases
+        if (tribe.health < 30) {
+            player.health -= 10;
+            this.dialogueSystem.showDialogue(
+                "Your health is declining due to poor tribe conditions. You should focus on food and water.",
+                ["Continue"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+        } else if (tribe.health < 50) {
+            player.health -= 5;
+        } else if (tribe.health > 80) {
+            // Good tribe conditions help player health recover slightly
+            player.health += 2;
+        }
+        
+        // Cap health between 0-100
+        if (player.health > 100) player.health = 100;
+        if (player.health < 0) player.health = 0;
+        
+        // Critical health warning
+        if (player.health < 25) {
+            this.dialogueSystem.showDialogue(
+                "Warning: Your health is critically low! You need to eat, drink, and rest soon or you may be medically evacuated!",
+                ["I understand"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+        }
+    }
+    
+    /**
+     * Player eats food action
+     * @returns {boolean} Whether the action was successful
+     */
+    playerEat() {
+        const player = this.getPlayerSurvivor();
+        const tribe = this.getPlayerTribe();
+        
+        if (!player || !tribe) return false;
+        
+        // Check if tribe has enough food
+        if (tribe.food < 10) {
+            this.dialogueSystem.showDialogue(
+                "There's not enough food for you to eat. Your tribe needs to gather more food.",
+                ["Continue"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+            return false;
+        }
+        
+        // Consume tribe food
+        tribe.food -= 10;
+        
+        // Increase player health
+        player.health += 15;
+        if (player.health > 100) player.health = 100;
+        
+        this.dialogueSystem.showDialogue(
+            "You eat some of your tribe's food. Your health improves.",
+            ["Continue"],
+            () => this.dialogueSystem.hideDialogue()
+        );
+        
+        return true;
+    }
+    
+    /**
+     * Player drinks water action
+     * @returns {boolean} Whether the action was successful
+     */
+    playerDrink() {
+        const player = this.getPlayerSurvivor();
+        const tribe = this.getPlayerTribe();
+        
+        if (!player || !tribe) return false;
+        
+        // Check if tribe has enough water
+        if (tribe.water < 10) {
+            this.dialogueSystem.showDialogue(
+                "There's not enough water to drink. Your tribe needs to collect more water.",
+                ["Continue"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+            return false;
+        }
+        
+        // Consume tribe water
+        tribe.water -= 10;
+        
+        // Increase player health
+        player.health += 10;
+        if (player.health > 100) player.health = 100;
+        
+        this.dialogueSystem.showDialogue(
+            "You drink some water. Your health improves and you feel more hydrated.",
+            ["Continue"],
+            () => this.dialogueSystem.hideDialogue()
+        );
+        
+        return true;
+    }
+    
+    /**
+     * Player rests action
+     * @returns {boolean} Whether the action was successful
+     */
+    playerRest() {
+        const player = this.getPlayerSurvivor();
+        const tribe = this.getPlayerTribe();
+        
+        if (!player || !tribe) return false;
+        
+        // Check if tribe has enough comfort (fire)
+        if (tribe.fire < 20) {
+            // Can still rest, but less effective
+            player.health += 5;
+            
+            this.dialogueSystem.showDialogue(
+                "You try to rest, but the lack of fire makes it uncomfortable. You get some benefit, but not much.",
+                ["Continue"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+        } else {
+            // Good rest with proper fire
+            player.health += 15;
+            
+            this.dialogueSystem.showDialogue(
+                "You rest by the warm fire. Your health improves significantly.",
+                ["Continue"],
+                () => this.dialogueSystem.hideDialogue()
+            );
+        }
+        
+        // Cap health
+        if (player.health > 100) player.health = 100;
+        
+        return true;
+    }
+    
+    /**
+     * Update tribe health based on current resources
+     */
+    updateTribeHealth() {
+        this.tribes.forEach(tribe => {
+            // Calculate average resource level
+            const avgResources = (tribe.fire + tribe.water + tribe.food) / 3;
+            
+            // Adjust health based on resources
+            if (avgResources < 20) {
+                // Critical resource level - health drops significantly
+                tribe.health -= 15;
+            } else if (avgResources < 40) {
+                // Low resource level - health drops moderately
+                tribe.health -= 7;
+            } else if (avgResources < 60) {
+                // Medium resource level - health stable
+                // No change
+            } else if (avgResources < 80) {
+                // Good resource level - health improves slightly
+                tribe.health += 3;
+                if (tribe.health > 100) tribe.health = 100;
+            } else {
+                // Excellent resource level - health improves
+                tribe.health += 7;
+                if (tribe.health > 100) tribe.health = 100;
+            }
+            
+            // Ensure health doesn't go below 0
+            if (tribe.health < 0) tribe.health = 0;
+            
+            // Health affects survivor performance
+            // If health is very low, notify player
+            if (tribe.health < 30 && this.getPlayerTribe() === tribe) {
+                this.dialogueSystem.showDialogue(
+                    "Your tribe's health is critically low due to resource shortages. You need to gather more food, water, and firewood.",
+                    ["Continue"],
+                    () => this.dialogueSystem.hideDialogue()
+                );
+            }
+        });
     }
     
     /**

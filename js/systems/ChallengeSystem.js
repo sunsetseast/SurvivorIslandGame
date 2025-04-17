@@ -357,6 +357,14 @@ class ChallengeSystem {
             this.immunePlayers.push(member);
         });
         
+        // Apply resource depletion penalty to losing tribe(s)
+        this.gameManager.getTribes().forEach(tribe => {
+            if (tribe !== this.tribeWinner) {
+                // Tribe lost challenge - deplete resources
+                this.depleteTribalResources(tribe);
+            }
+        });
+        
         // Show result
         const challengeDescription = document.getElementById('challenge-description');
         if (challengeDescription) {
@@ -366,10 +374,25 @@ class ChallengeSystem {
                 resultText += "\nYour tribe is safe from Tribal Council tonight.";
             } else {
                 resultText += "\nYour tribe must attend Tribal Council tonight.";
+                resultText += "\nLosing the challenge has depleted some of your tribe's resources.";
             }
             
             challengeDescription.textContent = resultText;
         }
+    }
+    
+    /**
+     * Deplete resources for a tribe that lost a challenge
+     * @param {Object} tribe - The tribe that lost the challenge
+     */
+    depleteTribalResources(tribe) {
+        // Lose 10-20% of resources randomly
+        const resourceLoss = 10 + Math.floor(Math.random() * 11);
+        
+        // Apply depletion to each resource
+        tribe.fire = Math.max(0, tribe.fire - Math.floor(tribe.fire * resourceLoss / 100));
+        tribe.water = Math.max(0, tribe.water - Math.floor(tribe.water * resourceLoss / 100));
+        tribe.food = Math.max(0, tribe.food - Math.floor(tribe.food * resourceLoss / 100));
     }
     
     /**
