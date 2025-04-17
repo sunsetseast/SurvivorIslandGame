@@ -159,8 +159,53 @@ const TribalCouncilScreen = {
      * Cast vote
      */
     castVote() {
+        // Cast votes
         gameManager.tribalCouncilSystem.castVote();
         
+        // First announce "I'll go tally the votes"
+        gameManager.dialogueSystem.showDialogue(
+            "Jeff Probst: \"I'll go tally the votes. If anybody has a Hidden Immunity Idol and wants to play it, now would be the time to do so.\"",
+            ["Continue"],
+            () => {
+                gameManager.dialogueSystem.hideDialogue();
+                
+                // Show idol result display if applicable
+                if (gameManager.tribalCouncilSystem.idolPlayed) {
+                    // The idol was already played earlier - this is handled in the playIdol method
+                    this.continueWithVoteCounting();
+                } else {
+                    // Give one last chance to play an idol with a short timer
+                    const player = gameManager.getPlayerSurvivor();
+                    if (player.hasIdol) {
+                        gameManager.dialogueSystem.showDialogue(
+                            "Would you like to play your Hidden Immunity Idol?",
+                            ["Yes, play my idol", "No, save it for later"],
+                            (choice) => {
+                                gameManager.dialogueSystem.hideDialogue();
+                                
+                                if (choice === 0) {
+                                    // Player decides to play idol at the last minute
+                                    this.playIdol();
+                                    setTimeout(() => this.continueWithVoteCounting(), 1000);
+                                } else {
+                                    // Continue with vote count
+                                    this.continueWithVoteCounting();
+                                }
+                            }
+                        );
+                    } else {
+                        // No idol to play, continue with vote count
+                        this.continueWithVoteCounting();
+                    }
+                }
+            }
+        );
+    },
+    
+    /**
+     * Continue with vote counting after idol play opportunity
+     */
+    continueWithVoteCounting() {
         // Run vote counting
         const voteResults = gameManager.tribalCouncilSystem.countVotes();
         
@@ -358,32 +403,13 @@ const TribalCouncilScreen = {
      * @param {Object} voteCount - Final vote counts by name
      */
     revealVotes(votes, container, voteCount) {
-        // First, ask if anyone wants to play an idol
+        // Idol play opportunities are now handled during the castVote method,
+        // so we can immediately proceed with starting the vote reveal here
         gameManager.dialogueSystem.showDialogue(
-            "Before I read the votes, if anyone has a hidden immunity idol and wants to play it, now would be the time to do so.",
+            "Jeff Probst: \"I'll read the votes.\"",
             ["Continue"],
             () => {
                 gameManager.dialogueSystem.hideDialogue();
-                
-                // If player has an idol, highlight the idol button
-                const player = gameManager.getPlayerSurvivor();
-                if (player.hasIdol) {
-                    const idolButton = document.getElementById('play-idol-button');
-                    if (idolButton) {
-                        idolButton.classList.remove('hidden');
-                        idolButton.style.animation = 'pulse 1s infinite';
-                        
-                        // Wait 5 seconds for player to decide
-                        setTimeout(() => {
-                            idolButton.style.animation = '';
-                            this.startVoteReveal(votes, container, voteCount);
-                        }, 5000);
-                        
-                        return;
-                    }
-                }
-                
-                // If no idol to play, start vote reveal
                 this.startVoteReveal(votes, container, voteCount);
             }
         );
