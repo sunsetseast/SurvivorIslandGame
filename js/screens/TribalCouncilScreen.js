@@ -140,11 +140,18 @@ const TribalCouncilScreen = {
                 playIdolButton.classList.add('hidden');
             }
             
-            // Show message
-            const titleText = document.getElementById('tribal-instruction');
-            if (titleText) {
-                titleText.textContent = "You played a Hidden Immunity Idol! Any votes against you will not count.";
-            }
+            // Show message with dramatic announcement
+            gameManager.dialogueSystem.showDialogue(
+                "Jeff Probst: \"This IS a Hidden Immunity Idol! Any votes cast against you will not count, and the person with the next highest number of votes will go home.\"",
+                ["Continue"], 
+                () => {
+                    const titleText = document.getElementById('tribal-instruction');
+                    if (titleText) {
+                        titleText.textContent = "You played a Hidden Immunity Idol! Any votes against you will not count.";
+                    }
+                    gameManager.dialogueSystem.hideDialogue();
+                }
+            );
         }
     },
     
@@ -155,10 +162,166 @@ const TribalCouncilScreen = {
         gameManager.tribalCouncilSystem.castVote();
         
         // Run vote counting
-        const voteCount = gameManager.tribalCouncilSystem.countVotes();
+        const voteResults = gameManager.tribalCouncilSystem.countVotes();
         
-        // Show vote results
-        this.showVotingResults(voteCount);
+        // Check if there's a tie
+        if (voteResults.isTied) {
+            // Handle tie vote
+            this.handleTieVote(voteResults);
+        } else {
+            // Show regular vote results
+            this.showVotingResults(voteResults.voteCount);
+        }
+    },
+    
+    /**
+     * Handle a tie vote situation
+     * @param {Object} tieResults - The tie vote results
+     */
+    handleTieVote(tieResults) {
+        // Announce the tie
+        gameManager.dialogueSystem.showDialogue(
+            `We have a tie between ${tieResults.tiedPlayers.join(" and ")}. According to the rules, we'll have a revote. Only these tied players can be voted for, and they cannot vote.`,
+            ["Proceed to Revote"],
+            () => {
+                gameManager.dialogueSystem.hideDialogue();
+                
+                // Update UI for revote
+                const titleText = document.getElementById('tribal-instruction');
+                if (titleText) {
+                    titleText.textContent = "REVOTE: Select one of the tied players to eliminate";
+                }
+                
+                // Clear previous vote selection
+                gameManager.tribalCouncilSystem.selectedVoteTarget = null;
+                
+                // Reconstruct voting grid with only tied players
+                this.createTieVoteGrid(tieResults.tiedPlayers);
+                
+                // Disable cast vote button until selection is made
+                const castVoteButton = document.getElementById('cast-vote-button');
+                if (castVoteButton) {
+                    castVoteButton.disabled = true;
+                }
+            }
+        );
+    },
+    
+    /**
+     * Create a voting grid for a tie vote situation
+     * @param {Array} tiedPlayers - Names of players who tied
+     */
+    createTieVoteGrid(tiedPlayers) {
+        const votingGrid = document.getElementById('voting-grid');
+        if (!votingGrid) return;
+        
+        // Clear grid
+        clearChildren(votingGrid);
+        
+        // Get tribe
+        const tribe = gameManager.getPlayerTribe();
+        
+        // Create cards only for tied players
+        tribe.members.forEach(survivor => {
+            // Skip the player (can't vote for self) and non-tied players
+            if (survivor.isPlayer || !tiedPlayers.includes(survivor.name)) return;
+            
+            const card = createElement('div', { 
+                className: 'vote-card',
+                onClick: () => this.selectRevoteTarget(survivor)
+            });
+            
+            const portrait = createElement('div', { className: 'vote-portrait' });
+            
+            const name = createElement('div', { 
+                className: 'vote-name',
+                textContent: survivor.name + " (Tied)"
+            });
+            
+            card.appendChild(portrait);
+            card.appendChild(name);
+            votingGrid.appendChild(card);
+        });
+    },
+    
+    /**
+     * Select a target in a revote
+     * @param {Object} survivor - The survivor to vote for
+     */
+    selectRevoteTarget(survivor) {
+        this.selectVoteTarget(survivor); // Reuse the existing selection logic
+    },
+    
+    /**
+     * Complete the revote process
+     */
+    completeRevote() {
+        // Handle the revote in the system
+        const revoteResults = gameManager.tribalCouncilSystem.handleTieVote(
+            gameManager.tribalCouncilSystem.tiedPlayers
+        );
+        
+        // Check if still tied
+        if (revoteResults.stillTied) {
+            // Go to rock draw
+            this.handleRockDraw(revoteResults.tiedPlayers);
+        } else {
+            // Show revote results
+            this.showVotingResults(revoteResults.revoteCount);
+        }
+    },
+    
+    /**
+     * Handle a rock draw situation when revote is still tied
+     * @param {Array} tiedPlayers - Players still tied after revote
+     */
+    handleRockDraw(tiedPlayers) {
+        gameManager.dialogueSystem.showDialogue(
+            `We still have a tie after the revote. According to Survivor rules, the tied players (${tiedPlayers.join(" and ")}) are now safe. Everyone else will draw rocks, and whoever gets the white rock will be eliminated.`,
+            ["Draw Rocks"],
+            () => {
+                gameManager.dialogueSystem.hideDialogue();
+                
+                // Perform rock draw
+                const eliminatedByRocks = gameManager.tribalCouncilSystem.drawRocks(tiedPlayers);
+                
+                // Show rock draw results
+                gameManager.dialogueSystem.showDialogue(
+                    `${eliminatedByRocks.name} has drawn the white rock and will be eliminated from the game.`,
+                    ["Continue"],
+                    () => {
+                        gameManager.dialogueSystem.hideDialogue();
+                        
+                        // Show elimination in tribal council results
+                        const eliminationText = document.getElementById('elimination-text');
+                        if (eliminationText) {
+                            eliminationText.textContent = `${eliminatedByRocks.name} has been eliminated by drawing the white rock!`;
+                        }
+                        
+                        // Show continue button
+                        const continueButton = document.getElementById('continue-after-vote-button');
+                        if (continueButton) {
+                            continueButton.style.display = 'block';
+                            continueButton.addEventListener('click', () => {
+                                this.continueAfterVote();
+                            });
+                        }
+                        
+                        // Hide voting panel, show results
+                        const votingContainer = document.getElementById('voting-container');
+                        const resultsContainer = document.getElementById('vote-results');
+                        
+                        if (votingContainer) {
+                            votingContainer.classList.add('hidden');
+                        }
+                        
+                        if (resultsContainer) {
+                            resultsContainer.classList.remove('hidden');
+                        }
+                    }
+                );
+            }
+        );
     },
     
     /**

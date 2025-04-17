@@ -173,6 +173,7 @@ class TribalCouncilSystem {
     
     /**
      * Count votes and determine eliminated player
+     * @returns {Object} Vote count and tied status information
      */
     countVotes() {
         // Count votes for each survivor
@@ -191,25 +192,163 @@ class TribalCouncilSystem {
             voteCount[target.name]++;
         });
         
-        // Determine eliminated player
+        // Find highest vote count
         let highestVotes = 0;
-        let eliminatedName = null;
-        
-        Object.entries(voteCount).forEach(([name, count]) => {
+        Object.values(voteCount).forEach(count => {
             if (count > highestVotes) {
                 highestVotes = count;
-                eliminatedName = name;
             }
         });
         
-        // Find the survivor object
-        if (eliminatedName) {
+        // Find players with highest vote count
+        const tiedPlayers = [];
+        Object.entries(voteCount).forEach(([name, count]) => {
+            if (count === highestVotes) {
+                tiedPlayers.push(name);
+            }
+        });
+        
+        // Check if there's a tie
+        if (tiedPlayers.length > 1) {
+            return {
+                voteCount: voteCount,
+                isTied: true,
+                tiedPlayers: tiedPlayers
+            };
+        }
+        
+        // No tie, determine eliminated player
+        if (tiedPlayers.length === 1) {
+            const eliminatedName = tiedPlayers[0];
             this.eliminatedSurvivor = this.currentTribe.members.find(
                 member => member.name === eliminatedName
             );
         }
         
-        return voteCount;
+        return {
+            voteCount: voteCount,
+            isTied: false,
+            tiedPlayers: []
+        };
+    }
+    
+    /**
+     * Handle tie vote by conducting a revote
+     * @param {Array} tiedPlayers - Names of players who tied
+     * @returns {Object} Results of the revote
+     */
+    handleTieVote(tiedPlayers) {
+        // Clear previous votes
+        this.votes = {};
+        
+        // Get tied player objects
+        const tiedSurvivors = tiedPlayers.map(name => 
+            this.currentTribe.members.find(member => member.name === name)
+        );
+        
+        // Determine eligible voters (everyone except tied players)
+        const eligibleVoters = this.currentTribe.members.filter(member => 
+            !tiedPlayers.includes(member.name)
+        );
+        
+        // Each eligible voter casts a vote for one of the tied players
+        eligibleVoters.forEach(voter => {
+            // Player makes choice manually in UI
+            if (voter.isPlayer) {
+                // This will be handled in the UI
+                return;
+            }
+            
+            // NPCs vote based on relationships
+            let targetVote = null;
+            let lowestRelationship = 100;
+            
+            tiedSurvivors.forEach(target => {
+                const relationship = voter.relationships[target.name] || 50;
+                if (relationship < lowestRelationship) {
+                    lowestRelationship = relationship;
+                    targetVote = target;
+                }
+            });
+            
+            if (targetVote) {
+                this.votes[voter.name] = targetVote;
+            }
+        });
+        
+        // Count revote results
+        const revoteCount = {};
+        
+        Object.values(this.votes).forEach(target => {
+            if (!revoteCount[target.name]) {
+                revoteCount[target.name] = 0;
+            }
+            revoteCount[target.name]++;
+        });
+        
+        // Check if revote is still tied
+        let highestVotes = 0;
+        Object.values(revoteCount).forEach(count => {
+            if (count > highestVotes) {
+                highestVotes = count;
+            }
+        });
+        
+        const stillTiedPlayers = [];
+        Object.entries(revoteCount).forEach(([name, count]) => {
+            if (count === highestVotes) {
+                stillTiedPlayers.push(name);
+            }
+        });
+        
+        // If still tied, go to rock draw
+        if (stillTiedPlayers.length > 1) {
+            return {
+                revoteCount: revoteCount,
+                stillTied: true,
+                tiedPlayers: stillTiedPlayers
+            };
+        }
+        
+        // No tie, determine eliminated player
+        if (stillTiedPlayers.length === 1) {
+            const eliminatedName = stillTiedPlayers[0];
+            this.eliminatedSurvivor = this.currentTribe.members.find(
+                member => member.name === eliminatedName
+            );
+        }
+        
+        return {
+            revoteCount: revoteCount,
+            stillTied: false,
+            tiedPlayers: []
+        };
+    }
+    
+    /**
+     * Handle drawing rocks when vote is still tied after revote
+     * @param {Array} tiedPlayers - Names of players who are still tied
+     * @returns {Object} The player who drew the white rock
+     */
+    drawRocks(tiedPlayers) {
+        // Tied players are immune from rock draw
+        const rockDrawers = this.currentTribe.members.filter(member => 
+            // Not a tied player and not already immune
+            !tiedPlayers.includes(member.name) && 
+            !this.immunePlayers.some(p => p.name === member.name)
+        );
+        
+        // If only one person available (edge case), they're eliminated
+        if (rockDrawers.length === 1) {
+            this.eliminatedSurvivor = rockDrawers[0];
+            return this.eliminatedSurvivor;
+        }
+        
+        // Randomly select a player to draw the white rock
+        const unluckyIndex = Math.floor(Math.random() * rockDrawers.length);
+        this.eliminatedSurvivor = rockDrawers[unluckyIndex];
+        
+        return this.eliminatedSurvivor;
     }
     
     /**
