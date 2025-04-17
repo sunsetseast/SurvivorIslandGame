@@ -307,29 +307,44 @@ class TribalCouncilSystem {
         // Clear previous votes
         this.votes = {};
         
+        // Store tiedPlayers for reference 
+        this.tiedPlayers = tiedPlayers;
+        
         // Get tied player objects
         const tiedSurvivors = tiedPlayers.map(name => 
             this.currentTribe.members.find(member => member.name === name)
-        );
+        ).filter(survivor => survivor !== undefined);
         
         // Determine eligible voters (everyone except tied players)
         const eligibleVoters = this.currentTribe.members.filter(member => 
             !tiedPlayers.includes(member.name)
         );
         
+        // Handle player's vote if they're eligible
+        const player = this.gameManager.getPlayerSurvivor();
+        let playerVotedInRevote = false;
+        
         // Each eligible voter casts a vote for one of the tied players
         eligibleVoters.forEach(voter => {
             // Player makes choice manually in UI
             if (voter.isPlayer) {
-                // This will be handled in the UI
+                // If player has already selected a target in the UI, use it
+                if (this.selectedVoteTarget) {
+                    this.votes[voter.name] = this.selectedVoteTarget;
+                    playerVotedInRevote = true;
+                }
+                // Otherwise this will be handled in the UI
                 return;
             }
             
             // NPCs vote based on relationships
             let targetVote = null;
-            let lowestRelationship = 100;
+            let lowestRelationship = 101; // Higher than max relationship
             
             tiedSurvivors.forEach(target => {
+                // Skip if target is undefined (shouldn't happen but just in case)
+                if (!target) return;
+                
                 const relationship = voter.relationships[target.name] || 50;
                 if (relationship < lowestRelationship) {
                     lowestRelationship = relationship;
@@ -339,12 +354,31 @@ class TribalCouncilSystem {
             
             if (targetVote) {
                 this.votes[voter.name] = targetVote;
+            } else if (tiedSurvivors.length > 0) {
+                // Fallback - vote for random tied player if relationships aren't set
+                this.votes[voter.name] = tiedSurvivors[Math.floor(Math.random() * tiedSurvivors.length)];
             }
         });
+        
+        // If player didn't vote yet and is eligible, wait for their vote
+        if (player && !tiedPlayers.includes(player.name) && !playerVotedInRevote) {
+            return {
+                revoteCount: {},
+                stillTied: false,
+                tiedPlayers: tiedPlayers,
+                waitingForPlayerVote: true
+            };
+        }
         
         // Count revote results
         const revoteCount = {};
         
+        // Initialize counts for all tied players to ensure they appear in results
+        tiedPlayers.forEach(name => {
+            revoteCount[name] = 0;
+        });
+        
+        // Count the actual votes
         Object.values(this.votes).forEach(target => {
             if (!revoteCount[target.name]) {
                 revoteCount[target.name] = 0;
@@ -397,14 +431,41 @@ class TribalCouncilSystem {
      * @returns {Object} The player who drew the white rock
      */
     drawRocks(tiedPlayers) {
-        // Tied players are immune from rock draw
-        const rockDrawers = this.currentTribe.members.filter(member => 
-            // Not a tied player and not already immune
-            !tiedPlayers.includes(member.name) && 
-            !this.immunePlayers.some(p => p.name === member.name)
-        );
+        // According to Survivor rules, these players are safe from the rock draw:
+        // 1. Players involved in the tie (tiedPlayers)
+        // 2. Players with immunity (individual or idol)
+        // 3. Tribal immunity does not protect from rock draw
         
-        // If only one person available (edge case), they're eliminated
+        // Get players who must draw rocks
+        const rockDrawers = this.currentTribe.members.filter(member => {
+            // Player is safe if:
+            const isSafe = 
+                // They are one of the tied players
+                tiedPlayers.includes(member.name) || 
+                // They have individual immunity or played an idol
+                (this.immunePlayers.some(p => p.name === member.name) && 
+                 (this.gameManager.gamePhase === "postMerge" || this.idolPlayed));
+                
+            // Draw rocks if not safe
+            return !isSafe;
+        });
+        
+        // If no eligible rock drawers (weird edge case)
+        if (rockDrawers.length === 0) {
+            console.log("No eligible players for rock draw - this is an edge case!");
+            // Force elimination of a tied player as a fallback
+            const tiedSurvivors = tiedPlayers.map(name => 
+                this.currentTribe.members.find(member => member.name === name)
+            ).filter(s => s !== undefined);
+            
+            if (tiedSurvivors.length > 0) {
+                this.eliminatedSurvivor = tiedSurvivors[Math.floor(Math.random() * tiedSurvivors.length)];
+                return this.eliminatedSurvivor;
+            }
+            return null;
+        }
+        
+        // If only one person available, they're automatically eliminated
         if (rockDrawers.length === 1) {
             this.eliminatedSurvivor = rockDrawers[0];
             return this.eliminatedSurvivor;
