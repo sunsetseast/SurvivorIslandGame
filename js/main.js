@@ -31,6 +31,7 @@ function setupEventListeners() {
     if (hamburgerIcon) {
         hamburgerIcon.addEventListener('click', () => {
             hamburgerIcon.classList.toggle('change');
+            gameMenu.classList.remove('hidden');
             gameMenu.classList.toggle('active');
             updateGameMenu();
         });
@@ -42,6 +43,19 @@ function setupEventListeners() {
             gameMenu.classList.remove('active');
         });
     }
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (event) => {
+        if (gameMenu && 
+            gameMenu.classList.contains('active') && 
+            !gameMenu.contains(event.target) && 
+            event.target !== hamburgerIcon &&
+            !hamburgerIcon.contains(event.target)) {
+            
+            hamburgerIcon.classList.remove('change');
+            gameMenu.classList.remove('active');
+        }
+    });
     
     // Save game button
     const saveButton = document.getElementById('save-game-button');

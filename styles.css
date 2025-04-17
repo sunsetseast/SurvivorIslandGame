@@ -543,6 +543,10 @@ button:disabled {
     right: 0;
 }
 
+#game-menu.hidden {
+    right: -350px;
+}
+
 .menu-header {
     display: flex;
     justify-content: space-between;
