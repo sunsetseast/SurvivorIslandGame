@@ -7,6 +7,12 @@ const ChallengeScreen = {
         // Reset challenge UI
         this.resetUI();
         
+        // Initialize the challenge system (creates a new challenge)
+        gameManager.challengeSystem.startChallenge();
+        
+        // Update the UI with the new challenge
+        gameManager.challengeSystem.updateChallengeUI();
+        
         // Set up challenge button
         const challengeButton = document.getElementById('challenge-button');
         if (challengeButton) {
@@ -48,20 +54,8 @@ const ChallengeScreen = {
      * Handle challenge button click
      */
     onChallengeButtonClick() {
-        // If challenge is not active, start it
-        if (!gameManager.challengeSystem.challengeActive) {
-            gameManager.challengeSystem.startChallenge();
-            
-            // Update button text
-            const challengeButton = document.getElementById('challenge-button');
-            if (challengeButton) {
-                challengeButton.textContent = "Tap!";
-            }
-            
-            return;
-        }
-        
-        // If challenge is active, register a tap
+        // With our reworked system, the button is now always just passing control
+        // to the challenge system's button handler, which will handle different states
         gameManager.challengeSystem.onChallengeButtonPressed();
     },
     
@@ -81,41 +75,6 @@ const ChallengeScreen = {
         if (challengeButton) {
             challengeButton.textContent = "Continue";
             challengeButton.disabled = false;
-            
-            // Clear old listeners
-            const clone = challengeButton.cloneNode(true);
-            challengeButton.parentNode.replaceChild(clone, challengeButton);
-            
-            // Add new listener
-            clone.addEventListener('click', () => {
-                // Determine next state based on challenge outcome
-                const challengeType = gameManager.challengeSystem.currentChallenge.type;
-                const gamePhase = gameManager.getGamePhase();
-                const playerWonImmunity = false;
-                
-                // Check if tribe won (pre-merge) or player won (post-merge)
-                if (challengeType === "tribe" && gamePhase === "preMerge") {
-                    // Pre-merge tribe challenge
-                    if (gameManager.challengeSystem.tribeWinner === gameManager.getPlayerTribe()) {
-                        // Player's tribe won, skip tribal council
-                        gameManager.advanceDay();
-                        gameManager.setGameState("camp");
-                        return;
-                    }
-                } else if (challengeType === "individual" && (gamePhase === "postMerge" || gamePhase === "final")) {
-                    // Post-merge individual challenge
-                    const playerSurvivor = gameManager.getPlayerSurvivor();
-                    if (gameManager.challengeSystem.individualWinner === playerSurvivor) {
-                        // Player won individual immunity
-                        // Still go to tribal council, but they're immune
-                        gameManager.setGameState("tribalCouncil");
-                        return;
-                    }
-                }
-                
-                // Proceed to tribal council
-                gameManager.setGameState("tribalCouncil");
-            });
         }
     }
 };

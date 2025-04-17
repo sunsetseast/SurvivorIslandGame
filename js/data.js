@@ -98,6 +98,55 @@ const survivorDatabase = {
             mentalStat: 65,
             personalityStat: 70,
             isPlayer: false
+        },
+        // New survivors to expand to 18
+        {
+            name: "Dakota",
+            description: "A natural leader with excellent communication skills.",
+            physicalStat: 75,
+            mentalStat: 80,
+            personalityStat: 85,
+            isPlayer: false
+        },
+        {
+            name: "Emerson",
+            description: "A strategic mastermind who sees several steps ahead.",
+            physicalStat: 60,
+            mentalStat: 95,
+            personalityStat: 75,
+            isPlayer: false
+        },
+        {
+            name: "Harper",
+            description: "A crafty player who excels at finding hidden advantages.",
+            physicalStat: 70,
+            mentalStat: 85,
+            personalityStat: 75,
+            isPlayer: false
+        },
+        {
+            name: "Kennedy",
+            description: "A physical beast with surprising puzzle-solving abilities.",
+            physicalStat: 90,
+            mentalStat: 75,
+            personalityStat: 65,
+            isPlayer: false
+        },
+        {
+            name: "Logan",
+            description: "A loyal ally with a strong moral compass.",
+            physicalStat: 75,
+            mentalStat: 70,
+            personalityStat: 90,
+            isPlayer: false
+        },
+        {
+            name: "Parker",
+            description: "A stealthy competitor who flies under the radar.",
+            physicalStat: 70,
+            mentalStat: 85,
+            personalityStat: 80,
+            isPlayer: false
         }
     ]
 };

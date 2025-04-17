@@ -9,6 +9,7 @@ class GameManager {
         this.playerCharacter = null;
         this.jury = [];
         this.mergeDay = 12;
+        this.tribeCount = 2; // Default to 2 tribes, can be changed in welcome screen
         
         // Initialize systems
         this.dialogueSystem = new DialogueSystem(this);
@@ -31,6 +32,7 @@ class GameManager {
         this.tribes = [];
         this.playerCharacter = null;
         this.jury = [];
+        this.tribeCount = 2; // Reset to default
         
         // Initialize systems
         this.energySystem.initialize();

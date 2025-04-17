@@ -19,19 +19,13 @@ const TribalCouncilScreen = {
             });
         }
         
-        // Set up idol play button
+        // Initially hide the idol play button - we'll show it at the correct time
         const playIdolButton = document.getElementById('play-idol-button');
         if (playIdolButton) {
-            // Show idol button only if player has an idol
-            const player = gameManager.getPlayerSurvivor();
-            if (player.hasIdol) {
-                playIdolButton.classList.remove('hidden');
-                playIdolButton.addEventListener('click', () => {
-                    this.playIdol();
-                });
-            } else {
-                playIdolButton.classList.add('hidden');
-            }
+            playIdolButton.classList.add('hidden');
+            playIdolButton.addEventListener('click', () => {
+                this.playIdol();
+            });
         }
         
         // Hide results panel
@@ -164,40 +158,49 @@ const TribalCouncilScreen = {
         
         // First announce "I'll go tally the votes"
         gameManager.dialogueSystem.showDialogue(
-            "Jeff Probst: \"I'll go tally the votes. If anybody has a Hidden Immunity Idol and wants to play it, now would be the time to do so.\"",
+            "Jeff Probst: \"I'll go tally the votes.\"",
             ["Continue"],
             () => {
                 gameManager.dialogueSystem.hideDialogue();
                 
-                // Show idol result display if applicable
-                if (gameManager.tribalCouncilSystem.idolPlayed) {
-                    // The idol was already played earlier - this is handled in the playIdol method
-                    this.continueWithVoteCounting();
-                } else {
-                    // Give one last chance to play an idol with a short timer
-                    const player = gameManager.getPlayerSurvivor();
-                    if (player.hasIdol) {
-                        gameManager.dialogueSystem.showDialogue(
-                            "Would you like to play your Hidden Immunity Idol?",
-                            ["Yes, play my idol", "No, save it for later"],
-                            (choice) => {
-                                gameManager.dialogueSystem.hideDialogue();
-                                
-                                if (choice === 0) {
-                                    // Player decides to play idol at the last minute
-                                    this.playIdol();
-                                    setTimeout(() => this.continueWithVoteCounting(), 1000);
-                                } else {
-                                    // Continue with vote count
-                                    this.continueWithVoteCounting();
-                                }
+                // After votes are cast but before they're read, offer to play an idol
+                gameManager.dialogueSystem.showDialogue(
+                    "Jeff Probst: \"If anybody has a Hidden Immunity Idol and wants to play it, now would be the time to do so.\"",
+                    ["Continue"],
+                    () => {
+                        gameManager.dialogueSystem.hideDialogue();
+                        
+                        // Show idol result display if applicable
+                        if (gameManager.tribalCouncilSystem.idolPlayed) {
+                            // The idol was already played earlier - this is handled in the playIdol method
+                            this.continueWithVoteCounting();
+                        } else {
+                            // Give the chance to play an idol
+                            const player = gameManager.getPlayerSurvivor();
+                            if (player.hasIdol) {
+                                gameManager.dialogueSystem.showDialogue(
+                                    "Would you like to play your Hidden Immunity Idol?",
+                                    ["Yes, play my idol", "No, save it for later"],
+                                    (choice) => {
+                                        gameManager.dialogueSystem.hideDialogue();
+                                        
+                                        if (choice === 0) {
+                                            // Player decides to play idol
+                                            this.playIdol();
+                                            setTimeout(() => this.continueWithVoteCounting(), 1500);
+                                        } else {
+                                            // Continue with vote count
+                                            this.continueWithVoteCounting();
+                                        }
+                                    }
+                                );
+                            } else {
+                                // No idol to play, continue with vote count
+                                this.continueWithVoteCounting();
                             }
-                        );
-                    } else {
-                        // No idol to play, continue with vote count
-                        this.continueWithVoteCounting();
+                        }
                     }
-                }
+                );
             }
         );
     },
