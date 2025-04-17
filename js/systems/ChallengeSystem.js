@@ -227,10 +227,14 @@ class ChallengeSystem {
      * Handle challenge button press - now just starts the automated challenge
      */
     onChallengeButtonPressed() {
+        console.log("Challenge button pressed. Challenge completed:", this.challengeCompleted);
+        
         if (this.challengeCompleted) {
+            // Disable button to prevent multiple clicks
             const challengeButton = document.getElementById('challenge-button');
             if (challengeButton) {
                 challengeButton.disabled = true;
+                challengeButton.textContent = "Please wait...";
             }
             
             // Determine which state to go to next
@@ -243,24 +247,33 @@ class ChallengeSystem {
                 if (this.tribeWinner === this.gameManager.getPlayerTribe()) {
                     // Player's tribe won immunity - skip tribal council
                     nextState = "camp";
+                    console.log("Player tribe won immunity. Going to camp.");
                 } else {
                     // Player's tribe lost immunity - go to tribal council
                     nextState = "tribalCouncil";
+                    console.log("Player tribe lost immunity. Going to tribal council.");
                 }
             } 
             // In post-merge phase with individual challenges:
             else if (this.currentChallenge.type === "individual") {
                 // Everyone goes to tribal, but some players have immunity
                 nextState = "tribalCouncil";
+                console.log("Individual challenge completed. Going to tribal council.");
             } 
             // Default fallback
             else {
                 nextState = "tribalCouncil";
+                console.log("Default case. Going to tribal council.");
             }
             
-            // Proceed to next state
-            this.gameManager.advanceDay();
-            this.gameManager.setGameState(nextState);
+            // Use setTimeout to ensure UI has time to update before state change
+            setTimeout(() => {
+                // Proceed to next state
+                console.log("Advancing day and changing state to:", nextState);
+                this.gameManager.advanceDay();
+                this.gameManager.setGameState(nextState);
+            }, 500);
+            
             return;
         }
         
@@ -543,10 +556,23 @@ class ChallengeSystem {
      * Show continue button after challenge completion
      */
     showContinueButton() {
+        console.log("Showing continue button");
         const challengeButton = document.getElementById('challenge-button');
         if (challengeButton) {
-            challengeButton.textContent = "Continue";
-            challengeButton.disabled = false;
+            // Remove any existing event listeners by cloning the button
+            const oldButton = challengeButton;
+            const newButton = oldButton.cloneNode(true);
+            oldButton.parentNode.replaceChild(newButton, oldButton);
+            
+            // Update the button
+            newButton.textContent = "Continue";
+            newButton.disabled = false;
+            
+            // Add new event listener
+            newButton.addEventListener('click', () => {
+                console.log("Continue button clicked");
+                this.onChallengeButtonPressed();
+            });
         }
     }
     
