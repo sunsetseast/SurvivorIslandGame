@@ -16,9 +16,15 @@ const ChallengeScreen = {
         // Set up challenge button
         const challengeButton = document.getElementById('challenge-button');
         if (challengeButton) {
-            challengeButton.textContent = "Start Challenge";
-            challengeButton.disabled = false;
-            challengeButton.addEventListener('click', () => {
+            // Remove any existing event listeners to prevent duplicates
+            challengeButton.replaceWith(challengeButton.cloneNode(true));
+            
+            // Get the fresh button reference after replacement
+            const freshButton = document.getElementById('challenge-button');
+            
+            freshButton.textContent = "Start Challenge";
+            freshButton.disabled = false;
+            freshButton.addEventListener('click', () => {
                 this.onChallengeButtonClick();
             });
         }
