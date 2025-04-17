@@ -10,6 +10,8 @@ class GameManager {
         this.jury = [];
         this.mergeDay = 12;
         this.tribeCount = 2; // Default to 2 tribes, can be changed in welcome screen
+        this.gameSequence = "beforeChallenge"; // beforeChallenge, afterChallenge
+        this.lastVotedOut = null; // Store the last person voted out to display message
         
         // Initialize systems
         this.dialogueSystem = new DialogueSystem(this);
@@ -35,6 +37,8 @@ class GameManager {
         this.tribeCount = 2; // Reset to default
         this.lastEliminatedSurvivor = null; // Track last eliminated player
         this.dayAdvanced = false; // Track if a day was advanced
+        this.gameSequence = "beforeChallenge"; // Reset game sequence
+        this.lastVotedOut = null; // Reset last voted out
         
         // Initialize systems
         this.energySystem.initialize();

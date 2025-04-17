@@ -241,6 +241,18 @@ class ChallengeSystem {
             let nextState = "camp";
             console.log("Challenge completed. Going back to camp.");
             
+            // Debug tribal immunity status
+            const playerTribe = this.gameManager.getPlayerTribe();
+            const allTribes = this.gameManager.getTribes();
+            
+            console.log("Tribe immunity status after challenge:");
+            allTribes.forEach(tribe => {
+                console.log(`- ${tribe.tribeName} tribe: isImmune=${tribe.isImmune}, immune members=${tribe.members.filter(m => m.hasImmunity).length}`);
+            });
+            
+            // Set game sequence to afterChallenge so camp screen knows what to do next
+            this.gameManager.gameSequence = "afterChallenge";
+            
             // Use setTimeout to ensure UI has time to update before state change
             setTimeout(() => {
                 // Proceed to next state
@@ -378,13 +390,21 @@ class ChallengeSystem {
                 
                 // First, clear any existing immunity
                 allTribes.forEach(tribe => {
+                    // Clear tribe immunity flag
+                    tribe.isImmune = false;
+                    
+                    // Clear individual member immunity
                     tribe.members.forEach(member => {
                         member.hasImmunity = false;
                     });
                 });
                 
-                // Then grant immunity to all members of the winning tribe(s)
+                // Then grant immunity to all winning tribes
                 winningTribes.forEach(tribe => {
+                    // Set tribe immunity flag
+                    tribe.isImmune = true;
+                    
+                    // Also set individual member immunity for compatibility
                     tribe.members.forEach(member => {
                         member.hasImmunity = true;
                     });
@@ -392,7 +412,8 @@ class ChallengeSystem {
                 
                 // Debug logging
                 console.log("Winning tribes:", winningTribes.map(t => t.tribeName).join(", "));
-                console.log("Tribes with immunity:", allTribes.filter(t => t.members.some(m => m.hasImmunity)).map(t => t.tribeName).join(", "));
+                console.log("Tribes with immunity:", allTribes.filter(t => t.isImmune).map(t => t.tribeName).join(", "));
+                console.log("Members with immunity:", allTribes.flatMap(t => t.members).filter(m => m.hasImmunity).map(m => m.name).join(", "));
                 
                 // Challenge complete - determine if player won
                 const playerWon = winningTribes.includes(playerTribe);

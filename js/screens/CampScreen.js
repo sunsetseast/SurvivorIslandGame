@@ -938,101 +938,136 @@ const CampScreen = {
      * Proceed to next phase (challenge or tribal council)
      */
     proceedToNextPhase() {
-        // Check if player's tribe must attend tribal council (lost immunity)
+        // Get important game state information
         const player = gameManager.getPlayerSurvivor();
         const playerTribe = gameManager.getPlayerTribe();
         const dayAdvanced = gameManager.dayAdvanced;
+        const gameSequence = gameManager.gameSequence;
         
-        // Check if the tribe members have immunity after a challenge
+        // Check if the tribe has immunity (tribe members with immunity)
         const hasImmunity = playerTribe.members.length > 0 && playerTribe.members.some(member => member.hasImmunity);
+        const isImmune = playerTribe.isImmune === true;
+        const hasTribeImmunity = hasImmunity || isImmune;
         
-        console.log("Proceed to next phase check - Tribe has immunity:", hasImmunity);
-        console.log("Player tribe members with immunity:", 
+        // Log important state for debugging
+        console.log("Proceed to next phase check - Current state:");
+        console.log("- Game sequence:", gameSequence);
+        console.log("- Tribe has immunity (member check):", hasImmunity);
+        console.log("- Tribe has immunity flag:", isImmune);
+        console.log("- Tribe has overall immunity:", hasTribeImmunity);
+        console.log("- Day advanced:", dayAdvanced);
+        console.log("- Game phase:", gameManager.gamePhase);
+        console.log("- Members with immunity:", 
                    playerTribe.members.filter(m => m.hasImmunity).map(m => m.name).join(", "));
-        console.log("Day advanced:", dayAdvanced);
-        console.log("Game phase:", gameManager.gamePhase);
         
-        // Update the progress button text based on the current state
+        // Update the progress button text based on the current game state
         const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
         if (nextPhaseButton) {
-            if (dayAdvanced) {
-                nextPhaseButton.textContent = "Proceed to Tribal Council";
+            if (gameSequence === "afterChallenge") {
+                if (!hasTribeImmunity) {
+                    nextPhaseButton.textContent = "Proceed to Tribal Council";
+                } else {
+                    nextPhaseButton.textContent = "Proceed to Next Day";
+                }
             } else {
                 nextPhaseButton.textContent = "Proceed to Challenge";
             }
         }
         
-        // If there was a recent challenge and player's tribe lost (no immunity)
-        if (dayAdvanced && !hasImmunity && gameManager.gamePhase === "preMerge") {
-            console.log("Player tribe lost immunity, going to tribal council");
-            // Go to tribal council (lost immunity)
+        // Display last vote results if available and not yet shown
+        if (gameManager.lastVotedOut && gameSequence === "beforeChallenge" && !gameManager.lastVotedOutShown) {
+            const votedOutName = gameManager.lastVotedOut;
             gameManager.dialogueSystem.showDialogue(
-                "Your tribe lost immunity in the challenge and must attend Tribal Council tonight.",
-                ["Proceed to Tribal Council"],
-                () => {
-                    gameManager.dialogueSystem.hideDialogue();
-                    gameManager.setGameState("tribalCouncil");
-                }
-            );
-        } 
-        // If tribe has immunity, skip tribal council and inform player
-        else if (dayAdvanced && hasImmunity && gameManager.gamePhase === "preMerge") {
-            console.log("Player tribe has immunity, skipping tribal council");
-            gameManager.dialogueSystem.showDialogue(
-                "Your tribe won immunity in the challenge! You can relax tonight while the other tribe goes to Tribal Council.",
+                `${votedOutName} was voted out at the last Tribal Council.`,
                 ["Continue"],
                 () => {
                     gameManager.dialogueSystem.hideDialogue();
-                    // Skip tribal council - the other tribe will go via TribalCouncilSystem
-                    // Proceed to the other tribe's tribal council
-                    gameManager.setGameState("tribalCouncil");
+                    gameManager.lastVotedOutShown = true;
+                    this.handleGameProgress();
                 }
             );
+            return;
         }
-        // If in post-merge phase, individual immunity applies, but everyone still goes to tribal
-        else if (dayAdvanced && gameManager.gamePhase === "postMerge") {
-            gameManager.dialogueSystem.showDialogue(
-                "It's time for Tribal Council.",
-                ["Proceed to Tribal Council"],
-                () => {
-                    gameManager.dialogueSystem.hideDialogue();
-                    gameManager.setGameState("tribalCouncil");
-                }
-            );
-        }
-        // If player's tribe has immunity (won challenge) and someone was just eliminated
-        else if (hasImmunity && gameManager.lastEliminatedSurvivor) {
-            const eliminatedSurvivor = gameManager.lastEliminatedSurvivor;
-            
-            // Show dialogue about who was eliminated
-            gameManager.dialogueSystem.showDialogue(
-                `${eliminatedSurvivor.name} from ${eliminatedSurvivor.tribeName} tribe was voted out at the last Tribal Council.`,
-                ["Continue to Next Challenge"],
-                () => {
-                    gameManager.dialogueSystem.hideDialogue();
-                    // Clear the last eliminated survivor info after showing it
-                    gameManager.lastEliminatedSurvivor = null;
-                    // Proceed to the next challenge
-                    gameManager.setGameState("challenge");
-                }
-            );
-        }
-        // Otherwise, proceed to next immunity challenge
-        else {
-            // Add dialogue to make flow clearer for player
+        
+        this.handleGameProgress();
+    },
+    
+    /**
+     * Handle the progression of the game based on current state
+     */
+    handleGameProgress() {
+        const player = gameManager.getPlayerSurvivor();
+        const playerTribe = gameManager.getPlayerTribe();
+        const gameSequence = gameManager.gameSequence;
+        
+        // Check immunity status in different ways to ensure consistency
+        const memberHasImmunity = playerTribe.members.length > 0 && playerTribe.members.some(member => member.hasImmunity);
+        const tribeIsImmune = playerTribe.isImmune === true;
+        const hasTribeImmunity = memberHasImmunity || tribeIsImmune;
+        
+        // BEFORE CHALLENGE: Always go to challenge
+        if (gameSequence === "beforeChallenge") {
             gameManager.dialogueSystem.showDialogue(
                 "Time for the immunity challenge! Your tribe will compete for safety from tribal council.",
                 ["Go to Challenge"],
                 () => {
                     gameManager.dialogueSystem.hideDialogue();
+                    gameManager.gameSequence = "afterChallenge"; // Update the game sequence
                     gameManager.setGameState("challenge");
                 }
             );
         }
-        
-        // Reset day advanced flag if it was set
-        if (dayAdvanced) {
-            gameManager.dayAdvanced = false;
+        // AFTER CHALLENGE: Either go to tribal council or next day
+        else if (gameSequence === "afterChallenge") {
+            // CASE 1: No immunity in pre-merge phase - go to tribal council
+            if (!hasTribeImmunity && gameManager.gamePhase === "preMerge") {
+                gameManager.dialogueSystem.showDialogue(
+                    "Your tribe lost immunity in the challenge and must attend Tribal Council tonight.",
+                    ["Proceed to Tribal Council"],
+                    () => {
+                        gameManager.dialogueSystem.hideDialogue();
+                        gameManager.setGameState("tribalCouncil");
+                    }
+                );
+            }
+            // CASE 2: Has immunity in pre-merge phase - skip tribal, inform player of other tribe going
+            else if (hasTribeImmunity && gameManager.gamePhase === "preMerge") {
+                gameManager.dialogueSystem.showDialogue(
+                    "Your tribe won immunity in the challenge! You can relax tonight while the other tribe goes to Tribal Council.",
+                    ["Continue to Next Day"],
+                    () => {
+                        gameManager.dialogueSystem.hideDialogue();
+                        // Skip tribal council for player tribe, but process other tribe's vote
+                        // in the background (via TribalCouncilSystem)
+                        gameManager.tribalCouncilSystem.simulateNPCTribalCouncil();
+                        
+                        // Reset back to beforeChallenge for next day's flow
+                        gameManager.gameSequence = "beforeChallenge";
+                        
+                        // Advance to the next day
+                        gameManager.advanceDay();
+                        
+                        // Back to camp
+                        gameManager.setGameState("camp");
+                    }
+                );
+            }
+            // CASE 3: Post-merge phase - everyone goes to tribal (unless player has individual immunity)
+            else if (gameManager.gamePhase === "postMerge") {
+                const playerHasIndividualImmunity = player.hasImmunity;
+                const immunityText = playerHasIndividualImmunity ? 
+                    "You have individual immunity tonight!" : 
+                    "You'll need to rely on your social game to avoid being voted out.";
+                
+                gameManager.dialogueSystem.showDialogue(
+                    `It's time for Tribal Council. ${immunityText}`,
+                    ["Proceed to Tribal Council"],
+                    () => {
+                        gameManager.dialogueSystem.hideDialogue();
+                        gameManager.setGameState("tribalCouncil");
+                    }
+                );
+            }
         }
     }
 };
