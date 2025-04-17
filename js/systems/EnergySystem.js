@@ -1,0 +1,179 @@
+// Energy System
+class EnergySystem {
+    constructor(gameManager) {
+        this.gameManager = gameManager;
+        this.currentEnergy = 3;
+        this.maxEnergy = 3;
+        this.lastRechargeTime = Date.now();
+        this.rechargeInterval = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+    }
+    
+    /**
+     * Initialize the energy system
+     */
+    initialize() {
+        this.currentEnergy = this.maxEnergy;
+        this.lastRechargeTime = Date.now();
+        this.loadEnergyState();
+        this.updateEnergyDisplay();
+    }
+    
+    /**
+     * Use energy for an activity
+     * @param {number} amount - The amount of energy to use
+     * @returns {boolean} True if energy was successfully used
+     */
+    useEnergy(amount = 1) {
+        // Check for natural recharge
+        this.checkEnergyRecharge();
+        
+        if (this.currentEnergy < amount) {
+            return false;
+        }
+        
+        this.currentEnergy -= amount;
+        this.saveEnergyState();
+        this.updateEnergyDisplay();
+        return true;
+    }
+    
+    /**
+     * Refill energy to maximum
+     */
+    refillEnergy() {
+        this.currentEnergy = this.maxEnergy;
+        this.lastRechargeTime = Date.now();
+        this.saveEnergyState();
+        this.updateEnergyDisplay();
+    }
+    
+    /**
+     * Add energy
+     * @param {number} amount - The amount of energy to add
+     */
+    addEnergy(amount = 1) {
+        this.currentEnergy = Math.min(this.currentEnergy + amount, this.maxEnergy);
+        this.saveEnergyState();
+        this.updateEnergyDisplay();
+    }
+    
+    /**
+     * Get current energy amount
+     * @returns {number} The current energy
+     */
+    getCurrentEnergy() {
+        this.checkEnergyRecharge();
+        return this.currentEnergy;
+    }
+    
+    /**
+     * Get maximum energy amount
+     * @returns {number} The maximum energy
+     */
+    getMaxEnergy() {
+        return this.maxEnergy;
+    }
+    
+    /**
+     * Check if energy has recharged naturally over time
+     */
+    checkEnergyRecharge() {
+        if (this.currentEnergy >= this.maxEnergy) {
+            this.lastRechargeTime = Date.now();
+            return;
+        }
+        
+        const now = Date.now();
+        const timeSinceRecharge = now - this.lastRechargeTime;
+        const energyToAdd = Math.floor(timeSinceRecharge / this.rechargeInterval);
+        
+        if (energyToAdd > 0) {
+            this.currentEnergy = Math.min(this.currentEnergy + energyToAdd, this.maxEnergy);
+            this.lastRechargeTime = now - (timeSinceRecharge % this.rechargeInterval);
+            this.saveEnergyState();
+            this.updateEnergyDisplay();
+        }
+    }
+    
+    /**
+     * Get time until next energy point
+     * @returns {string} Time until next energy in HH:MM:SS format
+     */
+    getTimeUntilNextEnergy() {
+        if (this.currentEnergy >= this.maxEnergy) {
+            return "Full";
+        }
+        
+        const now = Date.now();
+        const timeSinceRecharge = now - this.lastRechargeTime;
+        const timeRemaining = this.rechargeInterval - timeSinceRecharge;
+        
+        if (timeRemaining <= 0) {
+            this.checkEnergyRecharge();
+            return this.getTimeUntilNextEnergy();
+        }
+        
+        // Convert to hours, minutes, seconds
+        const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
+        const minutes = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+        const seconds = Math.floor((timeRemaining % (60 * 1000)) / 1000);
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    /**
+     * Update the energy display in the UI
+     */
+    updateEnergyDisplay() {
+        const energyCountDisplay = document.getElementById('energy-count');
+        const energyBarFill = document.getElementById('energy-bar-fill');
+        const energyTimeDisplay = document.getElementById('energy-time');
+        
+        if (energyCountDisplay) {
+            energyCountDisplay.textContent = `${this.currentEnergy}/${this.maxEnergy}`;
+        }
+        
+        if (energyBarFill) {
+            energyBarFill.style.width = formatProgressWidth(this.currentEnergy, this.maxEnergy);
+        }
+        
+        if (energyTimeDisplay) {
+            energyTimeDisplay.textContent = this.getTimeUntilNextEnergy();
+        }
+    }
+    
+    /**
+     * Save energy state to localStorage
+     */
+    saveEnergyState() {
+        const energyState = {
+            currentEnergy: this.currentEnergy,
+            lastRechargeTime: this.lastRechargeTime
+        };
+        
+        localStorage.setItem('survivorIslandEnergy', JSON.stringify(energyState));
+    }
+    
+    /**
+     * Load energy state from localStorage
+     */
+    loadEnergyState() {
+        const savedState = localStorage.getItem('survivorIslandEnergy');
+        
+        if (savedState) {
+            try {
+                const parsedState = JSON.parse(savedState);
+                this.currentEnergy = parsedState.currentEnergy || this.maxEnergy;
+                this.lastRechargeTime = parsedState.lastRechargeTime || Date.now();
+                
+                // Check for recharge
+                this.checkEnergyRecharge();
+            } catch (e) {
+                console.error('Error loading energy state:', e);
+                // Reset to default
+                this.currentEnergy = this.maxEnergy;
+                this.lastRechargeTime = Date.now();
+            }
+        }
+    }
+}

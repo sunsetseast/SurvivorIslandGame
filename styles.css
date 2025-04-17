@@ -1,0 +1,486 @@
+/* Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #1a75c0; /* Ocean blue */
+    background-image: linear-gradient(to bottom, #1a75c0, #60c0dd);
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 800px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    position: relative;
+    min-height: 600px;
+}
+
+/* Common Elements */
+h1, h2, h3 {
+    color: #e67700; /* Tribal torch orange */
+    text-align: center;
+    margin: 15px 0;
+}
+
+p {
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+button {
+    background-color: #1a75c0; /* Ocean blue */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #145b96;
+}
+
+button:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.big-button {
+    padding: 15px 30px;
+    font-size: 1.2em;
+    display: block;
+    margin: 20px auto;
+    min-width: 200px;
+}
+
+.small-button {
+    padding: 8px 15px;
+    font-size: 0.9em;
+}
+
+.menu-button {
+    display: inline-block;
+    margin: 5px;
+    background-color: #2d8a50; /* Jungle green */
+}
+
+.progress-bar {
+    width: 100%;
+    height: 15px;
+    background-color: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 5px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #3b82f6; /* Blue */
+    width: 50%; /* Default width */
+    transition: width 0.3s;
+}
+
+/* Screens */
+.game-screen {
+    display: none;
+    padding: 20px;
+    height: 100%;
+}
+
+.game-screen.active {
+    display: block;
+}
+
+/* Welcome Screen */
+#welcome-screen {
+    text-align: center;
+    background-image: url('assets/welcome-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    padding: 50px 20px;
+    height: 600px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#welcome-screen h1 {
+    font-size: 3em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    margin-bottom: 20px;
+    color: white;
+}
+
+#welcome-screen p {
+    font-size: 1.2em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    margin-bottom: 40px;
+}
+
+#play-button {
+    background-color: #e67700; /* Tribal torch orange */
+}
+
+/* Character Selection */
+#survivor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.survivor-card {
+    background-color: #f1f5f9;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    border: 2px solid transparent;
+}
+
+.survivor-card:hover {
+    transform: translateY(-5px);
+    border-color: #3b82f6;
+}
+
+.survivor-portrait {
+    width: 80px;
+    height: 80px;
+    background-color: #cbd5e1;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+}
+
+#survivor-details {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.stats-container {
+    margin: 20px 0;
+}
+
+.stat {
+    margin: 10px 0;
+}
+
+.stat label {
+    display: inline-block;
+    width: 100px;
+    font-weight: bold;
+}
+
+/* Tribe Division */
+#tribes-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.tribe-box {
+    flex: 1;
+    min-width: 250px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 15px;
+    border: 2px solid;
+}
+
+.tribe-members {
+    list-style-type: none;
+    margin-top: 10px;
+}
+
+.tribe-members li {
+    padding: 5px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.player-member {
+    font-weight: bold;
+    color: #1a75c0;
+}
+
+/* Challenge Screen */
+.challenge-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.challenge-progress {
+    margin: 20px 0;
+}
+
+#challenge-progress-bar {
+    background-color: #e67700; /* Tribal torch orange */
+}
+
+#competitors-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.competitor-box {
+    flex: 1;
+    min-width: 150px;
+    background-color: #f8fafc;
+    border-radius: 5px;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Camp Screen */
+.camp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.day-display, .energy-display {
+    background-color: #f8fafc;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+}
+
+.resources-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.resource {
+    flex: 1;
+    min-width: 120px;
+    background-color: #f8fafc;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+}
+
+#fire-bar {
+    background-color: #ef4444; /* Red for fire */
+}
+
+#water-bar {
+    background-color: #3b82f6; /* Blue for water */
+}
+
+#food-bar {
+    background-color: #65a30d; /* Green for food */
+}
+
+.camp-locations {
+    margin: 20px 0;
+}
+
+#location-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.location-button {
+    flex: 1;
+    min-width: 120px;
+}
+
+#location-actions {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+#action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.camp-menu {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+/* Tribal Council */
+#voting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.vote-card {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.vote-card.immune {
+    background-color: #fef3c7; /* Light yellow for immune */
+    cursor: not-allowed;
+}
+
+.vote-card.selected {
+    border-color: #e67700; /* Tribal torch orange */
+}
+
+.vote-portrait {
+    width: 60px;
+    height: 60px;
+    background-color: #cbd5e1;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+}
+
+#votes-container {
+    margin: 15px 0;
+}
+
+.vote-entry {
+    padding: 10px;
+    background-color: #f8fafc;
+    border-radius: 5px;
+    margin: 5px 0;
+    border-left: 4px solid #3b82f6;
+}
+
+/* Dialogue System */
+#dialogue-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 100;
+}
+
+.dialogue-box {
+    width: 90%;
+    max-width: 800px;
+    background-color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dialogue-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.speaker-portrait {
+    width: 50px;
+    height: 50px;
+    background-color: #cbd5e1;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+
+#dialogue-text {
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+#dialogue-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dialogue-choice {
+    padding: 10px 15px;
+    background-color: #f8fafc;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: 1px solid #e2e8f0;
+}
+
+.dialogue-choice:hover {
+    background-color: #e2e8f0;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    #game-container {
+        border-radius: 0;
+        min-height: 100vh;
+    }
+    
+    .camp-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .tribe-box {
+        min-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 0;
+    }
+    
+    #game-container {
+        max-width: 100%;
+    }
+    
+    #survivor-grid, #voting-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .big-button {
+        min-width: 150px;
+    }
+}
