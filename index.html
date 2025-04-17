@@ -141,6 +141,31 @@
                     </div>
                     <span id="food-value">50</span>
                 </div>
+                <!-- Health Meters -->
+                <div class="resource">
+                    <label>Tribe Health:</label>
+                    <div class="progress-bar">
+                        <div id="tribe-health-bar" class="progress-fill"></div>
+                    </div>
+                    <span id="tribe-health-value">100</span>
+                </div>
+                <div class="resource">
+                    <label>Your Health:</label>
+                    <div class="progress-bar">
+                        <div id="player-health-bar" class="progress-fill"></div>
+                    </div>
+                    <span id="player-health-value">100</span>
+                </div>
+            </div>
+            
+            <!-- Personal Health Actions -->
+            <div class="health-actions">
+                <h3>Personal Health</h3>
+                <div class="health-actions-buttons">
+                    <button id="eat-button" class="action-button" onclick="CampScreen.performPersonalHealthAction('eat')">Eat (-10 Tribe Food)</button>
+                    <button id="drink-button" class="action-button" onclick="CampScreen.performPersonalHealthAction('drink')">Drink (-10 Tribe Water)</button>
+                    <button id="personal-rest-button" class="action-button" onclick="CampScreen.performPersonalHealthAction('rest')">Rest (Uses Fire)</button>
+                </div>
             </div>
             <div class="camp-locations">
                 <h3>Locations</h3>

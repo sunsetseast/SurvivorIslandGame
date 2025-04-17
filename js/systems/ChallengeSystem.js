@@ -435,14 +435,28 @@ class ChallengeSystem {
             // Create a new event listener for the continue button
             challengeButton.onclick = () => {
                 // Determine which state to go to next
-                let nextState = "tribalCouncil";
+                let nextState;
                 
-                // If player's tribe won immunity in pre-merge phase
+                // In pre-merge phase with tribe challenges:
                 if (this.currentChallenge.type === "tribe" && 
-                    this.tribeWinner === this.gameManager.getPlayerTribe() &&
                     this.gameManager.getGamePhase() === "preMerge") {
-                    // Skip tribal council, go to next day
-                    nextState = "camp";
+                    
+                    if (this.tribeWinner === this.gameManager.getPlayerTribe()) {
+                        // Player's tribe won immunity - skip tribal council
+                        nextState = "camp";
+                    } else {
+                        // Player's tribe lost immunity - go to tribal council
+                        nextState = "tribalCouncil";
+                    }
+                } 
+                // In post-merge phase with individual challenges:
+                else if (this.currentChallenge.type === "individual") {
+                    // Everyone goes to tribal, but some players have immunity
+                    nextState = "tribalCouncil";
+                } 
+                // Default fallback
+                else {
+                    nextState = "tribalCouncil";
                 }
                 
                 // Proceed to next state

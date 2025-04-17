@@ -299,6 +299,57 @@ button:disabled {
     background-color: #65a30d; /* Green for food */
 }
 
+#tribe-health-bar {
+    background-color: #28a745; /* Green for health */
+}
+
+#player-health-bar {
+    background-color: #28a745; /* Green for health */
+}
+
+/* Health Actions Section */
+.health-actions {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.health-actions h3 {
+    margin-top: 0;
+    color: #334155;
+    margin-bottom: 10px;
+}
+
+.health-actions-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+/* Action Buttons */
+.action-button {
+    padding: 8px 12px;
+    background-color: #f97316;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.action-button:hover {
+    background-color: #ea580c;
+}
+
+.action-button:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
 .camp-locations {
     margin: 20px 0;
 }
