@@ -472,14 +472,22 @@ class IdolSystem {
     getSurvivorsWithIdols() {
         const survivorsWithIdols = [];
         
+        // Debug log to help troubleshoot
+        console.log("Checking for survivors with idols...");
+        
         this.gameManager.getTribes().forEach(tribe => {
+            console.log(`Checking tribe ${tribe.tribeName} with ${tribe.members.length} members`);
+            
             tribe.members.forEach(member => {
+                console.log(`Checking member ${member.name}, hasIdol: ${member.hasIdol}`);
                 if (member.hasIdol) {
                     survivorsWithIdols.push(member);
+                    console.log(`Added ${member.name} to idol holders list`);
                 }
             });
         });
         
+        console.log(`Found ${survivorsWithIdols.length} survivors with idols`);
         return survivorsWithIdols;
     }
 }

@@ -949,6 +949,18 @@ const CampScreen = {
         console.log("Proceed to next phase check - Tribe has immunity:", hasImmunity);
         console.log("Player tribe members with immunity:", 
                    playerTribe.members.filter(m => m.hasImmunity).map(m => m.name).join(", "));
+        console.log("Day advanced:", dayAdvanced);
+        console.log("Game phase:", gameManager.gamePhase);
+        
+        // Update the progress button text based on the current state
+        const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
+        if (nextPhaseButton) {
+            if (dayAdvanced) {
+                nextPhaseButton.textContent = "Proceed to Tribal Council";
+            } else {
+                nextPhaseButton.textContent = "Proceed to Challenge";
+            }
+        }
         
         // If there was a recent challenge and player's tribe lost (no immunity)
         if (dayAdvanced && !hasImmunity && gameManager.gamePhase === "preMerge") {
@@ -1007,7 +1019,15 @@ const CampScreen = {
         }
         // Otherwise, proceed to next immunity challenge
         else {
-            gameManager.setGameState("challenge");
+            // Add dialogue to make flow clearer for player
+            gameManager.dialogueSystem.showDialogue(
+                "Time for the immunity challenge! Your tribe will compete for safety from tribal council.",
+                ["Go to Challenge"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    gameManager.setGameState("challenge");
+                }
+            );
         }
         
         // Reset day advanced flag if it was set

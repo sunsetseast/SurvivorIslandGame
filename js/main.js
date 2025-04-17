@@ -314,19 +314,33 @@ function updateInventoryDisplay() {
     const immunityStatus = document.getElementById('immunity-status');
     
     // If elements don't exist, exit early
-    if (!idolStatus || !idolsInPlay || !immunityStatus) return;
+    if (!idolStatus || !idolsInPlay || !immunityStatus) {
+        console.log("Idol status elements not found in DOM");
+        return;
+    }
     
     // Get player and tribe information
     const player = gameManager.getPlayerSurvivor();
     const playerTribe = gameManager.getPlayerTribe();
     
-    if (!player || !playerTribe) return;
+    if (!player || !playerTribe) {
+        console.log("Player or tribe not available yet");
+        return;
+    }
+    
+    console.log(`Update inventory: Player ${player.name}, hasIdol: ${player.hasIdol}`);
     
     // Update idol status
     idolStatus.textContent = `Hidden Immunity Idol: ${player.hasIdol ? 'Yes' : 'No'}`;
     
     // Update idols in play
-    const totalIdols = gameManager.idolSystem ? gameManager.idolSystem.getIdolsInPlay() : 0;
+    let totalIdols = 0;
+    
+    if (gameManager.idolSystem) {
+        totalIdols = gameManager.idolSystem.getIdolsInPlay();
+        console.log(`Total idols in play: ${totalIdols}`);
+    }
+    
     idolsInPlay.textContent = `Idols in Play: ${totalIdols}`;
     
     // Add details about who has idols if any are in play
@@ -352,13 +366,17 @@ function updateInventoryDisplay() {
         holdersList.style.marginTop = '5px';
         holdersList.style.paddingLeft = '20px';
         
-        idolHolders.forEach(survivor => {
-            const holderItem = document.createElement('li');
-            holderItem.textContent = `${survivor.name}${survivor.isPlayer ? ' (You)' : ''}`;
-            holdersList.appendChild(holderItem);
-        });
-        
-        idolHoldersElement.appendChild(holdersList);
+        if (idolHolders.length > 0) {
+            idolHolders.forEach(survivor => {
+                const holderItem = document.createElement('li');
+                holderItem.textContent = `${survivor.name}${survivor.isPlayer ? ' (You)' : ''}`;
+                holdersList.appendChild(holderItem);
+            });
+            idolHoldersElement.appendChild(holdersList);
+        } else {
+            // This is a fallback in case getIdolsInPlay() and getSurvivorsWithIdols() are inconsistent
+            idolHoldersElement.innerHTML += '<p>Unknown players have idols</p>';
+        }
     } else {
         // Remove the idol holders element if no idols are in play
         const idolHoldersElement = document.getElementById('idol-holders');
