@@ -237,34 +237,9 @@ class ChallengeSystem {
                 challengeButton.textContent = "Please wait...";
             }
             
-            // Determine which state to go to next
-            let nextState;
-            
-            // In pre-merge phase with tribe challenges:
-            if (this.currentChallenge.type === "tribe" && 
-                this.gameManager.getGamePhase() === "preMerge") {
-                
-                if (this.tribeWinner === this.gameManager.getPlayerTribe()) {
-                    // Player's tribe won immunity - skip tribal council
-                    nextState = "camp";
-                    console.log("Player tribe won immunity. Going to camp.");
-                } else {
-                    // Player's tribe lost immunity - go to tribal council
-                    nextState = "tribalCouncil";
-                    console.log("Player tribe lost immunity. Going to tribal council.");
-                }
-            } 
-            // In post-merge phase with individual challenges:
-            else if (this.currentChallenge.type === "individual") {
-                // Everyone goes to tribal, but some players have immunity
-                nextState = "tribalCouncil";
-                console.log("Individual challenge completed. Going to tribal council.");
-            } 
-            // Default fallback
-            else {
-                nextState = "tribalCouncil";
-                console.log("Default case. Going to tribal council.");
-            }
+            // After any challenge, always go back to camp first
+            let nextState = "camp";
+            console.log("Challenge completed. Going back to camp.");
             
             // Use setTimeout to ensure UI has time to update before state change
             setTimeout(() => {

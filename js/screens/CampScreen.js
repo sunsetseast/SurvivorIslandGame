@@ -621,9 +621,48 @@ const CampScreen = {
     },
     
     /**
-     * Proceed to next day (challenge)
+     * Proceed to next day (challenge or tribal council)
      */
     proceedToNextDay() {
-        gameManager.setGameState("challenge");
+        // Check if player's tribe must attend tribal council (lost immunity)
+        const player = gameManager.getPlayerSurvivor();
+        const playerTribe = gameManager.getPlayerTribe();
+        const dayAdvanced = gameManager.dayAdvanced;
+        
+        // Check if the tribe members have immunity after a challenge
+        const hasImmunity = playerTribe.members.some(member => member.hasImmunity);
+        
+        // If there was a recent challenge and player's tribe lost (no immunity)
+        if (dayAdvanced && !hasImmunity && gameManager.gamePhase === "preMerge") {
+            // Go to tribal council (lost immunity)
+            gameManager.dialogueSystem.showDialogue(
+                "Your tribe lost immunity in the challenge and must attend Tribal Council tonight.",
+                ["Proceed to Tribal Council"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    gameManager.setGameState("tribalCouncil");
+                }
+            );
+        } 
+        // If in post-merge phase, everyone goes to tribal council after the challenge
+        else if (dayAdvanced && gameManager.gamePhase === "postMerge") {
+            gameManager.dialogueSystem.showDialogue(
+                "It's time for Tribal Council.",
+                ["Proceed to Tribal Council"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    gameManager.setGameState("tribalCouncil");
+                }
+            );
+        }
+        // Otherwise, proceed to next immunity challenge
+        else {
+            gameManager.setGameState("challenge");
+        }
+        
+        // Reset day advanced flag if it was set
+        if (dayAdvanced) {
+            gameManager.dayAdvanced = false;
+        }
     }
 };
