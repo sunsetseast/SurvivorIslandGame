@@ -139,7 +139,8 @@ class GameManager {
             members: [],
             fire: 50,
             water: 50,
-            food: 50
+            food: 50,
+            health: 100 // New tribe health property
         };
         
         const tribe2 = {
@@ -148,7 +149,8 @@ class GameManager {
             members: [],
             fire: 50,
             water: 50,
-            food: 50
+            food: 50,
+            health: 100 // New tribe health property
         };
         
         // Add player to tribe 1
@@ -198,7 +200,8 @@ class GameManager {
             members: [],
             fire: 50,
             water: 50,
-            food: 50
+            food: 50,
+            health: 100 // New tribe health property
         };
         
         // Combine members from all tribes

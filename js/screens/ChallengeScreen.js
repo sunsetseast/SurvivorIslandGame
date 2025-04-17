@@ -89,16 +89,32 @@ const ChallengeScreen = {
             // Add new listener
             clone.addEventListener('click', () => {
                 // Determine next state based on challenge outcome
-                if (gameManager.challengeSystem.currentChallenge.type === "tribe" && 
-                    gameManager.challengeSystem.tribeWinner === gameManager.getPlayerTribe() &&
-                    gameManager.getGamePhase() === "preMerge") {
-                    // Skip tribal council, go to next day
-                    gameManager.advanceDay();
-                    gameManager.setGameState("camp");
-                } else {
-                    // Proceed to tribal council
-                    gameManager.setGameState("tribalCouncil");
+                const challengeType = gameManager.challengeSystem.currentChallenge.type;
+                const gamePhase = gameManager.getGamePhase();
+                const playerWonImmunity = false;
+                
+                // Check if tribe won (pre-merge) or player won (post-merge)
+                if (challengeType === "tribe" && gamePhase === "preMerge") {
+                    // Pre-merge tribe challenge
+                    if (gameManager.challengeSystem.tribeWinner === gameManager.getPlayerTribe()) {
+                        // Player's tribe won, skip tribal council
+                        gameManager.advanceDay();
+                        gameManager.setGameState("camp");
+                        return;
+                    }
+                } else if (challengeType === "individual" && (gamePhase === "postMerge" || gamePhase === "final")) {
+                    // Post-merge individual challenge
+                    const playerSurvivor = gameManager.getPlayerSurvivor();
+                    if (gameManager.challengeSystem.individualWinner === playerSurvivor) {
+                        // Player won individual immunity
+                        // Still go to tribal council, but they're immune
+                        gameManager.setGameState("tribalCouncil");
+                        return;
+                    }
                 }
+                
+                // Proceed to tribal council
+                gameManager.setGameState("tribalCouncil");
             });
         }
     }
