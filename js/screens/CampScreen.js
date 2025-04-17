@@ -268,7 +268,20 @@ const CampScreen = {
      * @param {Object} action - The action to perform
      */
     performAction(action) {
-        // Check if player has enough energy
+        // Special case for idol search - we don't consume energy yet
+        // Energy will be consumed only when searching a specific hiding spot
+        if (action.type === 'searchForIdol') {
+            this.searchForIdol();
+            
+            // Hide action panel
+            this.hideLocationActions();
+            
+            // Update resource display
+            this.updateResourceDisplay();
+            return;
+        }
+        
+        // Check if player has enough energy for other actions
         if (!gameManager.energySystem.useEnergy(action.energyCost)) {
             // Show not enough energy message
             gameManager.dialogueSystem.showDialogue(
@@ -289,9 +302,6 @@ const CampScreen = {
                 break;
             case 'findFood':
                 this.findFood();
-                break;
-            case 'searchForIdol':
-                this.searchForIdol();
                 break;
             case 'socialize':
                 this.socialize();

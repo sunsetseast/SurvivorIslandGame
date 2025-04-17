@@ -319,14 +319,42 @@ class ChallengeSystem {
      */
     animateTribeChallenge(tribeScores, playerTribe) {
         const allTribes = Array.from(tribeScores.keys());
-        const maxScore = Math.max(...Array.from(tribeScores.values()));
-        const winningTribe = allTribes.find(tribe => tribeScores.get(tribe) === maxScore);
+        
+        // For tribe challenges, we need to determine winners differently based on number of tribes
+        let winningTribes = [];
+        
+        if (allTribes.length === 3) {
+            // In 3-tribe mode, 2 tribes win immunity (top 2 scores) and 1 tribe loses (lowest score)
+            // Sort tribes by score (descending)
+            const sortedTribes = allTribes.sort((a, b) => tribeScores.get(b) - tribeScores.get(a));
+            
+            // Top 2 tribes win immunity
+            winningTribes = [sortedTribes[0], sortedTribes[1]];
+            
+            // Bottom tribe loses
+            this.losingTribeName = sortedTribes[2].tribeName;
+        } else {
+            // In 2-tribe mode, only 1 tribe wins immunity and the other goes to tribal council
+            const maxScore = Math.max(...Array.from(tribeScores.values()));
+            const winningTribe = allTribes.find(tribe => tribeScores.get(tribe) === maxScore);
+            
+            winningTribes = [winningTribe];
+            
+            // Find losing tribe for tribal council
+            const losingTribes = allTribes.filter(tribe => tribe !== winningTribe);
+            if (losingTribes.length > 0) {
+                this.losingTribeName = losingTribes[0].tribeName;
+            }
+        }
         
         // Update UI to show challenge in progress
         const challengeDescription = document.getElementById('challenge-description');
         if (challengeDescription) {
             challengeDescription.textContent = "Tribes are competing...";
         }
+        
+        // For visualization, we still use the max score as reference
+        const maxScore = Math.max(...Array.from(tribeScores.values()));
         
         // Set progress for visualization
         allTribes.forEach(tribe => {
@@ -345,15 +373,18 @@ class ChallengeSystem {
             if (step < totalSteps) {
                 setTimeout(updateAnimation, 500);
             } else {
-                // Find losing tribe for tribal council
-                const losingTribes = allTribes.filter(tribe => tribe !== winningTribe);
-                if (losingTribes.length > 0) {
-                    this.losingTribeName = losingTribes[0].tribeName;
-                }
+                // Set the winning tribe(s)
+                this.tribeWinner = winningTribes[0]; // For backward compatibility
                 
-                // Challenge complete - determine winner
-                this.tribeWinner = winningTribe;
-                const playerWon = (winningTribe === playerTribe);
+                // Grant immunity to all members of the winning tribe(s)
+                winningTribes.forEach(tribe => {
+                    tribe.members.forEach(member => {
+                        member.hasImmunity = true;
+                    });
+                });
+                
+                // Challenge complete - determine if player won
+                const playerWon = winningTribes.includes(playerTribe);
                 this.completeChallenge(playerWon);
             }
         };

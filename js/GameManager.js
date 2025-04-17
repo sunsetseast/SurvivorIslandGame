@@ -530,12 +530,102 @@ class GameManager {
     }
     
     /**
-     * Check if tribes should merge
+     * Check if tribes should merge or shuffle
      */
     checkForMerge() {
-        if (this.gamePhase === "preMerge" && this.day >= this.mergeDay) {
+        // Only check if in preMerge phase
+        if (this.gamePhase !== "preMerge") return;
+        
+        // Count total remaining players
+        let totalPlayers = 0;
+        this.tribes.forEach(tribe => {
+            totalPlayers += tribe.members.length;
+        });
+        
+        // In 3-tribe mode, we shuffle to 2 tribes at 14 players
+        if (this.tribes.length === 3 && totalPlayers <= 14 && totalPlayers > 12) {
+            // Shuffle from 3 tribes to 2 tribes
+            this.shuffleTribes(2);
+            return;
+        }
+        
+        // Regular merge to 1 tribe at merge day or when we have 12 or fewer players in pre-merge
+        if (this.day >= this.mergeDay || totalPlayers <= 12) {
             this.setGameState("merge");
         }
+    }
+    
+    /**
+     * Shuffle players into a new number of tribes
+     * @param {number} newTribeCount - The new number of tribes
+     */
+    shuffleTribes(newTribeCount) {
+        // If we already have this number of tribes, no need to shuffle
+        if (this.tribes.length === newTribeCount) return;
+        
+        // Gather all players from existing tribes
+        const allPlayers = [];
+        this.tribes.forEach(tribe => {
+            tribe.members.forEach(member => {
+                allPlayers.push(member);
+            });
+        });
+        
+        // Create new tribe structures
+        const newTribes = [];
+        for (let i = 0; i < newTribeCount; i++) {
+            const newTribe = {
+                tribeName: tribeNames[i],
+                tribeColor: tribeColors[i],
+                members: [],
+                fire: 50,
+                water: 50,
+                food: 50,
+                health: 100
+            };
+            newTribes.push(newTribe);
+        }
+        
+        // Shuffle players
+        const shuffledPlayers = shuffleArray(allPlayers);
+        
+        // Ensure player is placed first so they're always in tribe 0
+        const playerIndex = shuffledPlayers.findIndex(player => player.isPlayer);
+        if (playerIndex !== -1) {
+            const player = shuffledPlayers.splice(playerIndex, 1)[0];
+            shuffledPlayers.unshift(player);
+        }
+        
+        // Calculate players per tribe
+        const playersPerTribe = Math.ceil(shuffledPlayers.length / newTribeCount);
+        
+        // Distribute players to new tribes
+        for (let i = 0; i < shuffledPlayers.length; i++) {
+            const tribeIndex = Math.floor(i / playersPerTribe);
+            // Ensure we don't go past the number of tribes we have
+            if (tribeIndex < newTribes.length) {
+                newTribes[tribeIndex].members.push(shuffledPlayers[i]);
+            }
+        }
+        
+        // Replace old tribes with new ones
+        this.tribes = newTribes;
+        
+        // Initialize relationships for the new tribes
+        this.tribes.forEach(tribe => {
+            this.relationshipSystem.initializeTribeRelationships(tribe);
+        });
+        
+        // Show a dialogue explaining the tribe shuffle
+        this.dialogueSystem.showDialogue(
+            "TRIBE SHUFFLE: The tribes have been reorganized! You are now on the " + 
+            newTribes[0].tribeName + " tribe.",
+            ["Continue"],
+            () => {
+                this.dialogueSystem.hideDialogue();
+                this.setGameState("camp");
+            }
+        );
     }
     
     /**
