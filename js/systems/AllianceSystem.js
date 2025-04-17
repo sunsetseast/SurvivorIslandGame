@@ -41,7 +41,10 @@ class AllianceSystem {
         // Check if they have a good enough relationship
         const relationship = this.gameManager.relationshipSystem.getRelationship(survivor1, survivor2);
         
+        console.log(`Attempting to form alliance between ${survivor1.name} and ${survivor2.name}, relationship: ${relationship}`);
+        
         if (relationship < 60) {
+            console.log("Relationship not strong enough for alliance");
             return null; // Relationship not strong enough
         }
         
@@ -50,11 +53,16 @@ class AllianceSystem {
             this.containsMember(alliance, survivor1) && 
             this.containsMember(alliance, survivor2)
         )) {
+            console.log("Already in an alliance together");
             return null; // Already in an alliance together
         }
         
         // Create a new alliance
-        const alliance = this.createAlliance(`${survivor1.name} & ${survivor2.name}`);
+        const allianceName = survivor1.isPlayer ? 
+            `${survivor1.name}'s Alliance with ${survivor2.name}` : 
+            `${survivor1.name} & ${survivor2.name}`;
+            
+        const alliance = this.createAlliance(allianceName);
         
         // Add both members
         this.addToAlliance(alliance, survivor1);
@@ -62,6 +70,8 @@ class AllianceSystem {
         
         // Calculate initial strength
         this.calculateAllianceStrength(alliance);
+        
+        console.log(`Created new alliance: ${alliance.name} with strength ${alliance.strength}`);
         
         return alliance;
     }

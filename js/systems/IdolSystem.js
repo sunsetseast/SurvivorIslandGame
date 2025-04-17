@@ -68,6 +68,13 @@ class IdolSystem {
         const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
         if (!selectedLocationButton) {
             console.error("No location button selected!");
+            
+            // Show error message to the user
+            this.gameManager.dialogueSystem.showDialogue(
+                "You need to select a location first before searching for an idol.",
+                ["OK"],
+                () => this.gameManager.dialogueSystem.hideDialogue()
+            );
             return;
         }
         
@@ -79,23 +86,95 @@ class IdolSystem {
         
         console.log("Selected location:", locationName);
         
+        // Create a modal dialog for idol hunting
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.style.position = 'fixed';
+        modalOverlay.style.top = '0';
+        modalOverlay.style.left = '0';
+        modalOverlay.style.width = '100%';
+        modalOverlay.style.height = '100%';
+        modalOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        modalOverlay.style.display = 'flex';
+        modalOverlay.style.justifyContent = 'center';
+        modalOverlay.style.alignItems = 'center';
+        modalOverlay.style.zIndex = '1000';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.backgroundColor = '#fff';
+        modalContent.style.padding = '20px';
+        modalContent.style.borderRadius = '5px';
+        modalContent.style.maxWidth = '600px';
+        modalContent.style.width = '90%';
+        modalContent.style.maxHeight = '80%';
+        modalContent.style.overflowY = 'auto';
+        
+        const modalHeader = document.createElement('h2');
+        modalHeader.textContent = `Search for Hidden Immunity Idol at ${locationName}`;
+        modalHeader.style.marginBottom = '20px';
+        modalHeader.style.color = '#d9534f';
+        modalContent.appendChild(modalHeader);
+        
+        const modalDescription = document.createElement('p');
+        modalDescription.textContent = 'Choose a specific spot to search. Each search costs 2 energy.';
+        modalDescription.style.marginBottom = '20px';
+        modalContent.appendChild(modalDescription);
+        
+        const spotButtonsContainer = document.createElement('div');
+        spotButtonsContainer.style.display = 'flex';
+        spotButtonsContainer.style.flexDirection = 'column';
+        spotButtonsContainer.style.gap = '10px';
+        
         // Get location-specific hiding spots
         const hidingSpots = this.getLocationHidingSpots(locationName);
         console.log("Available hiding spots:", hidingSpots);
         
-        // Create idol search options
-        const choiceTexts = hidingSpots.map(spot => `Search ${spot}`);
+        // Create buttons for each hiding spot
+        hidingSpots.forEach(spot => {
+            const button = document.createElement('button');
+            button.textContent = `Search ${spot}`;
+            button.className = 'search-spot-button';
+            button.style.padding = '10px';
+            button.style.backgroundColor = '#5cb85c';
+            button.style.color = 'white';
+            button.style.border = 'none';
+            button.style.borderRadius = '4px';
+            button.style.margin = '5px 0';
+            button.style.cursor = 'pointer';
+            
+            button.addEventListener('click', () => {
+                // Remove the modal
+                document.body.removeChild(modalOverlay);
+                
+                // Start the idol search
+                this.startIdolSearch(spot);
+            });
+            
+            spotButtonsContainer.appendChild(button);
+        });
         
-        // Show search options dialogue
-        this.gameManager.dialogueSystem.showDialogue(
-            "Where would you like to search for a hidden immunity idol?",
-            choiceTexts,
-            (choice) => {
-                console.log("Selected hiding spot:", hidingSpots[choice]);
-                this.gameManager.dialogueSystem.hideDialogue();
-                this.startIdolSearch(hidingSpots[choice]);
-            }
-        );
+        modalContent.appendChild(spotButtonsContainer);
+        
+        // Add cancel button
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.style.backgroundColor = '#d9534f';
+        cancelButton.style.color = 'white';
+        cancelButton.style.border = 'none';
+        cancelButton.style.borderRadius = '4px';
+        cancelButton.style.padding = '10px';
+        cancelButton.style.marginTop = '20px';
+        cancelButton.style.cursor = 'pointer';
+        cancelButton.style.width = '100%';
+        
+        cancelButton.addEventListener('click', () => {
+            document.body.removeChild(modalOverlay);
+        });
+        
+        modalContent.appendChild(cancelButton);
+        modalOverlay.appendChild(modalContent);
+        document.body.appendChild(modalOverlay);
     }
     
     /**

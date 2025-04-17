@@ -211,6 +211,16 @@ const CampScreen = {
             locationDescription.textContent = location.description;
         }
         
+        // Add data-location attribute to the selected location button
+        const allLocationButtons = document.querySelectorAll('.location-button');
+        allLocationButtons.forEach(button => {
+            button.classList.remove('selected');
+            if (button.textContent === location.name) {
+                button.classList.add('selected');
+                button.setAttribute('data-location', location.name);
+            }
+        });
+        
         // Create action buttons
         if (actionButtons) {
             clearChildren(actionButtons);
