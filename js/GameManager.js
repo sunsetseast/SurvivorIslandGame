@@ -33,6 +33,8 @@ class GameManager {
         this.playerCharacter = null;
         this.jury = [];
         this.tribeCount = 2; // Reset to default
+        this.lastEliminatedSurvivor = null; // Track last eliminated player
+        this.dayAdvanced = false; // Track if a day was advanced
         
         // Initialize systems
         this.energySystem.initialize();
@@ -324,6 +326,9 @@ class GameManager {
         
         // Check for merge
         this.checkForMerge();
+        
+        // Track that a day has passed for flow control
+        this.dayAdvanced = true;
     }
     
     /**
@@ -554,6 +559,14 @@ class GameManager {
         );
         
         if (!tribe) return;
+        
+        // Store the eliminated survivor for reference
+        this.lastEliminatedSurvivor = {
+            name: survivor.name,
+            tribeName: tribe.tribeName,
+            tribeColor: tribe.tribeColor,
+            day: this.day
+        };
         
         // Remove from tribe
         tribe.members = tribe.members.filter(m => m.name !== survivor.name);

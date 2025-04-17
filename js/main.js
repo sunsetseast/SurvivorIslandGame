@@ -96,6 +96,9 @@ function setupEventListeners() {
                         // Initialize new game
                         gameManager.initializeGame();
                         
+                        // Show welcome screen
+                        gameManager.setGameState("welcome");
+                        
                         // Close menu
                         const hamburgerIcon = document.getElementById('hamburger-icon');
                         const gameMenu = document.getElementById('game-menu');
@@ -207,23 +210,57 @@ function updateGameMenu() {
         gameInfo.innerHTML = gameInfoHTML;
     }
     
-    // Tribe Info
-    if (tribeInfo && currentTribe) {
-        let tribeHTML = `
-            <div class="menu-tribe">
-                <strong>Tribe:</strong> <span style="color:${currentTribe.tribeColor}">${currentTribe.tribeName}</span>
-            </div>
-            <div class="menu-tribe">
-                <strong>Members:</strong>
-            </div>
-            <ul class="menu-tribe-members">
-        `;
+    // Tribe Info - Now showing all tribes
+    if (tribeInfo) {
+        let tribeHTML = '';
         
-        currentTribe.members.forEach(member => {
-            tribeHTML += `<li>${member.name}${member.isPlayer ? ' (You)' : ''}</li>`;
-        });
+        // Get all tribes
+        const allTribes = gameManager.getTribes();
         
-        tribeHTML += `</ul>`;
+        if (allTribes && allTribes.length > 0) {
+            // Show player's tribe first
+            if (currentTribe) {
+                tribeHTML += `
+                    <div class="menu-tribe">
+                        <strong>Your Tribe:</strong> <span style="color:${currentTribe.tribeColor}">${currentTribe.tribeName}</span>
+                    </div>
+                    <div class="menu-tribe">
+                        <strong>Members:</strong>
+                    </div>
+                    <ul class="menu-tribe-members">
+                `;
+                
+                currentTribe.members.forEach(member => {
+                    tribeHTML += `<li>${member.name}${member.isPlayer ? ' (You)' : ''}</li>`;
+                });
+                
+                tribeHTML += `</ul>`;
+            }
+            
+            // Show other tribes
+            allTribes.forEach(tribe => {
+                if (tribe !== currentTribe) {
+                    tribeHTML += `
+                        <div class="menu-tribe" style="margin-top: 15px;">
+                            <strong>Tribe:</strong> <span style="color:${tribe.tribeColor}">${tribe.tribeName}</span>
+                        </div>
+                        <div class="menu-tribe">
+                            <strong>Members:</strong>
+                        </div>
+                        <ul class="menu-tribe-members">
+                    `;
+                    
+                    tribe.members.forEach(member => {
+                        tribeHTML += `<li>${member.name}</li>`;
+                    });
+                    
+                    tribeHTML += `</ul>`;
+                }
+            });
+        } else {
+            tribeHTML = '<div class="menu-empty">No tribe information available</div>';
+        }
+        
         tribeInfo.innerHTML = tribeHTML;
     }
     

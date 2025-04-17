@@ -7,11 +7,29 @@ const ChallengeScreen = {
         // Reset challenge UI
         this.resetUI();
         
-        // Initialize the challenge system (creates a new challenge)
-        gameManager.challengeSystem.startChallenge();
-        
-        // Update the UI with the new challenge
-        gameManager.challengeSystem.updateChallengeUI();
+        // Check if there was a previously eliminated survivor to announce
+        if (gameManager.lastEliminatedSurvivor && gameManager.gamePhase === "preMerge") {
+            // Announce the last eliminated player before starting the challenge
+            gameManager.dialogueSystem.showDialogue(
+                `Previously at tribal council, ${gameManager.lastEliminatedSurvivor.name} from ${gameManager.lastEliminatedSurvivor.tribeName} tribe was voted out.`,
+                ["Continue"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    
+                    // Initialize the challenge system (creates a new challenge)
+                    gameManager.challengeSystem.startChallenge();
+                    
+                    // Update the UI with the new challenge
+                    gameManager.challengeSystem.updateChallengeUI();
+                }
+            );
+        } else {
+            // Initialize the challenge system (creates a new challenge)
+            gameManager.challengeSystem.startChallenge();
+            
+            // Update the UI with the new challenge
+            gameManager.challengeSystem.updateChallengeUI();
+        }
         
         // Set up challenge button
         const challengeButton = document.getElementById('challenge-button');
