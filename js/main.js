@@ -23,6 +23,9 @@ function initializeGame() {
  * Set up event listeners
  */
 function setupEventListeners() {
+    // Set up a function to update inventory display every second
+    setInterval(updateInventoryDisplay, 1000);
+    
     // Hamburger Menu
     const hamburgerIcon = document.getElementById('hamburger-icon');
     const gameMenu = document.getElementById('game-menu');
@@ -300,6 +303,36 @@ function updateGameMenu() {
 
 // Initialize when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', initializeGame);
+
+/**
+ * Update the inventory display with idol and immunity information
+ */
+function updateInventoryDisplay() {
+    // Get DOM elements
+    const idolStatus = document.getElementById('idol-status');
+    const idolsInPlay = document.getElementById('idols-in-play');
+    const immunityStatus = document.getElementById('immunity-status');
+    
+    // If elements don't exist, exit early
+    if (!idolStatus || !idolsInPlay || !immunityStatus) return;
+    
+    // Get player and tribe information
+    const player = gameManager.getPlayerSurvivor();
+    const playerTribe = gameManager.getPlayerTribe();
+    
+    if (!player || !playerTribe) return;
+    
+    // Update idol status
+    idolStatus.textContent = `Hidden Immunity Idol: ${player.hasIdol ? 'Yes' : 'No'}`;
+    
+    // Update idols in play
+    const totalIdols = gameManager.idolSystem ? gameManager.idolSystem.getIdolsInPlay() : 0;
+    idolsInPlay.textContent = `Idols in Play: ${totalIdols}`;
+    
+    // Update immunity status
+    const hasImmunity = player.hasImmunity || (playerTribe.members.some(member => member.hasImmunity) && gameManager.getGamePhase() === "preMerge");
+    immunityStatus.textContent = `Immunity: ${hasImmunity ? 'Yes' : 'No'}`;
+}
 
 // Handle window errors
 window.onerror = function(message, source, lineno, colno, error) {

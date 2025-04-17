@@ -616,16 +616,9 @@ class GameManager {
             this.relationshipSystem.initializeTribeRelationships(tribe);
         });
         
-        // Show a dialogue explaining the tribe shuffle
-        this.dialogueSystem.showDialogue(
-            "TRIBE SHUFFLE: The tribes have been reorganized! You are now on the " + 
-            newTribes[0].tribeName + " tribe.",
-            ["Continue"],
-            () => {
-                this.dialogueSystem.hideDialogue();
-                this.setGameState("camp");
-            }
-        );
+        // Instead of just a dialogue, show the tribe division screen
+        // so players can see the new tribe distribution
+        this.setGameState("tribeShuffle");
     }
     
     /**
