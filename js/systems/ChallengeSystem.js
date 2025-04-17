@@ -376,12 +376,23 @@ class ChallengeSystem {
                 // Set the winning tribe(s)
                 this.tribeWinner = winningTribes[0]; // For backward compatibility
                 
-                // Grant immunity to all members of the winning tribe(s)
+                // First, clear any existing immunity
+                allTribes.forEach(tribe => {
+                    tribe.members.forEach(member => {
+                        member.hasImmunity = false;
+                    });
+                });
+                
+                // Then grant immunity to all members of the winning tribe(s)
                 winningTribes.forEach(tribe => {
                     tribe.members.forEach(member => {
                         member.hasImmunity = true;
                     });
                 });
+                
+                // Debug logging
+                console.log("Winning tribes:", winningTribes.map(t => t.tribeName).join(", "));
+                console.log("Tribes with immunity:", allTribes.filter(t => t.members.some(m => m.hasImmunity)).map(t => t.tribeName).join(", "));
                 
                 // Challenge complete - determine if player won
                 const playerWon = winningTribes.includes(playerTribe);
