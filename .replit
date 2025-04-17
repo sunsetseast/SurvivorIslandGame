@@ -1,0 +1,52 @@
+modules = ["unity"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Survivor Island Unity Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "survivor_island_game"
+
+[[workflows.workflow]]
+name = "Survivor Island Unity Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "unity-hub --headless --no-sandbox --url unityhub://editor/2022.3.22f1 && cd $(pwd) && unity-editor -batchmode -nographics -projectPath . -buildTarget Android -executeMethod BuildPlayer.BuildAndroid -logFile - -quit; echo \"Starting web server...\"; cd Builds/WebGL && python -m http.server 5000"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "survivor_island_game"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "unity-editor -projectPath . -batchmode -nographics -executeMethod BuildAndRun"
+
+[deployment]
+run = ["sh", "-c", "unity-hub --headless --no-sandbox --url unityhub://editor/2022.3.22f1 && cd $(pwd) && unity-editor -batchmode -nographics -projectPath . -buildTarget Android -executeMethod BuildPlayer.BuildAndroid -logFile - -quit; echo \"Starting web server...\"; cd Builds/WebGL && python -m http.server 5000"]
