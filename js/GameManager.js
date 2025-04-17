@@ -162,10 +162,13 @@ class GameManager {
         // Add player to first tribe
         createdTribes[0].members.push(this.playerCharacter);
         
-        // Get random NPCs
+        // Get random NPCs, excluding the player's selected character
         const npcSurvivors = [];
         survivorDatabase.survivors.forEach(survivor => {
-            npcSurvivors.push(deepCopy(survivor));
+            // Skip the character that the player selected
+            if (survivor.name !== this.playerCharacter.name) {
+                npcSurvivors.push(deepCopy(survivor));
+            }
         });
         
         // Shuffle the NPCs

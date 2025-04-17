@@ -394,7 +394,8 @@ const CampScreen = {
      * Search for idol action
      */
     searchForIdol() {
-        // Show idol search interface
+        // Show idol search interface without spending energy
+        // Energy will only be spent when a specific hiding spot is searched
         gameManager.idolSystem.showIdolSearch();
     },
     
