@@ -263,6 +263,15 @@ class IdolSystem {
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
         
+        if (this.searchedSpots.has(searchKey)) {
+            this.gameManager.dialogueSystem.showDialogue(
+                `You've already searched ${hidingSpot} at this location. Try looking somewhere else.`,
+                ["Continue"],
+                () => this.gameManager.dialogueSystem.hideDialogue()
+            );
+            return;
+        }
+        
         // Check if player has enough energy first (2 energy cost)
         if (this.gameManager.energySystem.getCurrentEnergy() < 2) {
             this.gameManager.dialogueSystem.showDialogue(
@@ -301,21 +310,65 @@ class IdolSystem {
                     // Reset idol location for next time
                     this.resetIdolLocations();
                 } else {
-                    // Create different messages for different results
-                    const messages = [
-                        `You search thoroughly ${hidingSpot} but find nothing unusual.`,
-                        `After looking carefully ${hidingSpot}, you come up empty-handed.`,
-                        `You dig and search ${hidingSpot} but don't find any idols.`,
-                        `Unfortunately, there's no idol hidden ${hidingSpot}.`
-                    ];
+                    // Check if all spots in this location have been searched
+                    const allSpotsInLocation = this.getLocationHidingSpots(locationName);
+                    const allSpotSearched = allSpotsInLocation.every(spot => 
+                        this.searchedSpots.has(`${locationName}:${spot}`)
+                    );
                     
-                    const selectedMessage = getRandomItem(messages);
-                    console.log(`Didn't find idol. Message: ${selectedMessage}`);
-                    
+                    // If all spots in this location have been searched
+                    if (allSpotSearched) {
+                        this.gameManager.dialogueSystem.showDialogue(
+                            `You've searched all possible hiding spots at ${locationName}. There are no idols here. Someone may have already found it or it's hidden elsewhere.`,
+                            ["Continue"],
+                            () => this.gameManager.dialogueSystem.hideDialogue()
+                        );
+                    } else {
+                        // Create different messages for different results
+                        const messages = [
+                            `You search thoroughly ${hidingSpot} but find nothing unusual.`,
+                            `After looking carefully ${hidingSpot}, you come up empty-handed.`,
+                            `You dig and search ${hidingSpot} but don't find any idols.`,
+                            `Unfortunately, there's no idol hidden ${hidingSpot}.`
+                        ];
+                        
+                        const selectedMessage = getRandomItem(messages);
+                        console.log(`Didn't find idol. Message: ${selectedMessage}`);
+                        
+                        this.gameManager.dialogueSystem.showDialogue(
+                            selectedMessage,
+                            ["Continue"],
+                            () => this.gameManager.dialogueSystem.hideDialogue()
+                        );
+                    }
+                }
+                
+                // Check if all spots in all locations have been searched
+                const allLocations = ["Beach", "Jungle", "Camp", "Private Area"];
+                let totalSpots = 0;
+                let searchedSpots = 0;
+                
+                allLocations.forEach(loc => {
+                    const spots = this.getLocationHidingSpots(loc);
+                    totalSpots += spots.length;
+                    spots.forEach(spot => {
+                        if (this.searchedSpots.has(`${loc}:${spot}`)) {
+                            searchedSpots++;
+                        }
+                    });
+                });
+                
+                // If all possible spots have been searched and idol still exists
+                if (searchedSpots >= totalSpots && this.idolLocation) {
+                    // Reset idol locations as someone else must have found it
                     this.gameManager.dialogueSystem.showDialogue(
-                        selectedMessage,
+                        "You've searched everywhere but haven't found an idol. Someone else must have already found it.",
                         ["Continue"],
-                        () => this.gameManager.dialogueSystem.hideDialogue()
+                        () => {
+                            this.gameManager.dialogueSystem.hideDialogue();
+                            this.idolsInPlay++;  // Assume an NPC has it
+                            this.resetIdolLocations();
+                        }
                     );
                 }
             }

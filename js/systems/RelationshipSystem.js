@@ -11,6 +11,21 @@ class RelationshipSystem {
             { min: 60, max: 79, description: "Friendly" },
             { min: 80, max: 100, description: "Close Ally" }
         ];
+        
+        // Store conversation memories
+        this.memories = {};
+        
+        // Survivor traits for richer interactions
+        this.traits = {
+            "Loyal": "Values loyalty and keeps their word",
+            "Deceptive": "Will say one thing but do another",
+            "Strategic": "Always thinking several steps ahead",
+            "Emotional": "Makes decisions based on feelings",
+            "Physical": "Focuses on challenges and camp life",
+            "Social": "Builds relationships with everyone",
+            "Unpredictable": "Hard to anticipate their moves",
+            "Observant": "Notices details others miss"
+        };
     }
     
     /**
@@ -18,6 +33,8 @@ class RelationshipSystem {
      */
     initialize() {
         // Relationships are stored within survivor objects
+        // Initialize memory storage
+        this.memories = {};
     }
     
     /**
