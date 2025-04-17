@@ -195,6 +195,98 @@ class AllianceSystem {
     }
     
     /**
+     * Process automatic alliance formations between NPCs
+     * This should be called periodically (e.g., each day)
+     */
+    processNPCAllianceFormations() {
+        // Get all tribes
+        const allTribes = this.gameManager.getTribes();
+        
+        // For each tribe, attempt to form alliances
+        allTribes.forEach(tribe => {
+            // Only process if there are enough members (at least 3)
+            if (tribe.members.length < 3) return;
+            
+            // Get NPCs in this tribe that aren't the player
+            const npcs = tribe.members.filter(member => !member.isPlayer);
+            
+            // Random chance to form a new alliance
+            if (Math.random() < 0.3 && npcs.length >= 2) { // 30% chance each day
+                // Select random NPCs to form an alliance
+                const shuffledNPCs = [...npcs];
+                shuffleArray(shuffledNPCs);
+                
+                // Take the first 2-3 NPCs from the shuffled list
+                const allianceSize = Math.min(Math.floor(Math.random() * 2) + 2, shuffledNPCs.length);
+                const allianceMembers = shuffledNPCs.slice(0, allianceSize);
+                
+                // Check if they already share an alliance
+                let existingAlliance = false;
+                this.alliances.forEach(alliance => {
+                    // Check if all potential members are in this alliance
+                    const allInAlliance = allianceMembers.every(member => 
+                        this.containsMember(alliance, member));
+                    
+                    if (allInAlliance) {
+                        existingAlliance = true;
+                    }
+                });
+                
+                // If they don't share an alliance, create one
+                if (!existingAlliance) {
+                    // Generate an alliance name
+                    const allianceName = "The " + this.generateRandomAllianceName();
+                    
+                    // Create the alliance
+                    const newAlliance = this.createAlliance(allianceName);
+                    
+                    // Add members
+                    allianceMembers.forEach(member => {
+                        this.addToAlliance(newAlliance, member);
+                    });
+                    
+                    // Calculate initial strength
+                    this.calculateAllianceStrength(newAlliance);
+                    
+                    // Sometimes notify the player about alliance formation
+                    if (Math.random() < 0.5) {
+                        const player = this.gameManager.getPlayerSurvivor();
+                        if (player && tribe.members.includes(player)) {
+                            // Player is in the same tribe, so they might notice
+                            const firstMember = allianceMembers[0].name;
+                            const secondMember = allianceMembers[1].name;
+                            
+                            gameManager.dialogueSystem.showDialogue(
+                                `You notice ${firstMember} and ${secondMember} whispering together frequently. They might be forming an alliance.`,
+                                ["Interesting..."],
+                                () => gameManager.dialogueSystem.hideDialogue()
+                            );
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Generate a random alliance name
+     * @returns {string} A random alliance name
+     */
+    generateRandomAllianceName() {
+        const adjectives = [
+            "Hidden", "Secret", "Strong", "Power", "Loyal", "Stealth", 
+            "Unbreakable", "Core", "Strategic", "Ultimate", "Final"
+        ];
+        
+        const nouns = [
+            "Alliance", "Pact", "Trust", "Coalition", "Circle", "Team", 
+            "Allies", "Union", "Bond", "League", "Partnership", "Syndicate"
+        ];
+        
+        return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+    }
+    
+    /**
      * Process alliance voting decisions for tribal council
      * @param {Object} tribe - The tribe at tribal council
      * @param {Array} immunePlayers - Array of players with immunity

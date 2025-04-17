@@ -286,6 +286,12 @@ class GameManager {
         // Clear immunity
         this.clearImmunity();
         
+        // Process NPC alliance formations
+        this.allianceSystem.processNPCAllianceFormations();
+        
+        // Process NPCs finding idols
+        this.idolSystem.processNPCIdolFinds();
+        
         // Check for merge
         this.checkForMerge();
     }
