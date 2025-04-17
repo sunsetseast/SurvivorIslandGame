@@ -117,7 +117,7 @@ class IdolSystem {
         modalContent.appendChild(modalHeader);
         
         const modalDescription = document.createElement('p');
-        modalDescription.textContent = 'Choose a specific spot to search. Each search costs 2 energy.';
+        modalDescription.textContent = 'Choose a specific spot to search. Each search costs 2 energy, which will be consumed only when you select a spot.';
         modalDescription.style.marginBottom = '20px';
         modalContent.appendChild(modalDescription);
         

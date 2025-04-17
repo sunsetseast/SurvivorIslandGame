@@ -479,21 +479,33 @@ class ChallengeSystem {
      */
     completeTribeChallenge(playerWon) {
         const playerTribe = this.gameManager.getPlayerTribe();
+        const allTribes = this.gameManager.getTribes();
         
+        // Find all the winning tribes (tribes whose members have immunity)
+        const winningTribes = allTribes.filter(tribe => 
+            tribe.members.length > 0 && tribe.members[0].hasImmunity
+        );
+        
+        // Set tribeWinner for backward compatibility 
         if (playerWon) {
             this.tribeWinner = playerTribe;
+        } else if (winningTribes.length > 0) {
+            this.tribeWinner = winningTribes[0];
         }
         
-        // Apply immunity to winning tribe
+        // Clear and rebuild immunePlayers list
         this.immunePlayers = [];
-        this.tribeWinner.members.forEach(member => {
-            member.hasImmunity = true;
-            this.immunePlayers.push(member);
+        allTribes.forEach(tribe => {
+            tribe.members.forEach(member => {
+                if (member.hasImmunity) {
+                    this.immunePlayers.push(member);
+                }
+            });
         });
         
         // Apply resource depletion penalty to losing tribe(s)
-        this.gameManager.getTribes().forEach(tribe => {
-            if (tribe !== this.tribeWinner) {
+        allTribes.forEach(tribe => {
+            if (!winningTribes.includes(tribe)) {
                 // Tribe lost challenge - deplete resources
                 this.depleteTribalResources(tribe);
             }
@@ -502,11 +514,25 @@ class ChallengeSystem {
         // Show result
         const challengeDescription = document.getElementById('challenge-description');
         if (challengeDescription) {
-            let resultText = `${this.tribeWinner.tribeName} Tribe wins immunity!`;
+            let resultText = "";
             
-            if (this.tribeWinner === playerTribe) {
+            if (winningTribes.length === 1) {
+                // Single winning tribe
+                resultText = `${winningTribes[0].tribeName} Tribe wins immunity!`;
+            } else {
+                // Multiple winning tribes (3-tribe mode)
+                const tribeNames = winningTribes.map(tribe => tribe.tribeName).join(" and ");
+                resultText = `${tribeNames} Tribes win immunity!`;
+            }
+            
+            if (playerWon) {
                 resultText += "\nYour tribe is safe from Tribal Council tonight.";
-                resultText += "\nThe other tribe must vote someone out.";
+                if (allTribes.length > 2) {
+                    // If there are more than 2 tribes, mention that one tribe goes to council
+                    resultText += "\nThe " + this.losingTribeName + " tribe must vote someone out.";
+                } else {
+                    resultText += "\nThe other tribe must vote someone out.";
+                }
             } else {
                 resultText += "\nYour tribe must attend Tribal Council tonight.";
                 resultText += "\nLosing the challenge has depleted some of your tribe's resources.";
