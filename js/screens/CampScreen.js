@@ -25,11 +25,11 @@ const CampScreen = {
             });
         }
         
-        // Set up next day button
-        const nextDayButton = document.getElementById('proceed-to-challenge-button');
-        if (nextDayButton) {
-            nextDayButton.addEventListener('click', () => {
-                this.proceedToNextDay();
+        // Set up next phase button
+        const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
+        if (nextPhaseButton) {
+            nextPhaseButton.addEventListener('click', () => {
+                this.proceedToNextPhase();
             });
         }
         
@@ -314,7 +314,7 @@ const CampScreen = {
         
         // Check if all energy is used
         if (gameManager.energySystem.getCurrentEnergy() <= 0) {
-            this.proceedToNextDay();
+            this.proceedToNextPhase();
         }
     },
     
@@ -754,9 +754,9 @@ const CampScreen = {
     },
     
     /**
-     * Proceed to next day (challenge or tribal council)
+     * Proceed to next phase (challenge or tribal council)
      */
-    proceedToNextDay() {
+    proceedToNextPhase() {
         // Check if player's tribe must attend tribal council (lost immunity)
         const player = gameManager.getPlayerSurvivor();
         const playerTribe = gameManager.getPlayerTribe();
@@ -785,6 +785,23 @@ const CampScreen = {
                 () => {
                     gameManager.dialogueSystem.hideDialogue();
                     gameManager.setGameState("tribalCouncil");
+                }
+            );
+        }
+        // If player's tribe has immunity (won challenge) and someone was just eliminated
+        else if (hasImmunity && gameManager.lastEliminatedSurvivor) {
+            const eliminatedSurvivor = gameManager.lastEliminatedSurvivor;
+            
+            // Show dialogue about who was eliminated
+            gameManager.dialogueSystem.showDialogue(
+                `${eliminatedSurvivor.name} from ${eliminatedSurvivor.tribeName} tribe was voted out at the last Tribal Council.`,
+                ["Continue to Next Challenge"],
+                () => {
+                    gameManager.dialogueSystem.hideDialogue();
+                    // Clear the last eliminated survivor info after showing it
+                    gameManager.lastEliminatedSurvivor = null;
+                    // Proceed to the next challenge
+                    gameManager.setGameState("challenge");
                 }
             );
         }
