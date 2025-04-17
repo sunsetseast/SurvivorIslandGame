@@ -179,6 +179,7 @@ const CampScreen = {
             const button = createElement('button', {
                 className: 'location-button',
                 textContent: location.name,
+                'data-location': location.name,
                 onClick: () => this.selectLocation(location)
             });
             

@@ -42,6 +42,9 @@ class IdolSystem {
      * Show idol search interface
      */
     showIdolSearch() {
+        console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
+        console.log("Current idol location is:", this.idolLocation);
+        
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
             // No idols left to find
@@ -56,17 +59,29 @@ class IdolSystem {
         // Get current location from CampScreen
         // First check if we can access it
         const campScreenElement = document.getElementById('camp-screen');
-        if (!campScreenElement) return;
+        if (!campScreenElement) {
+            console.error("Cannot find camp screen element!");
+            return;
+        }
         
         // Look for the data-location attribute on the selected location button
         const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
-        if (!selectedLocationButton) return;
+        if (!selectedLocationButton) {
+            console.error("No location button selected!");
+            return;
+        }
         
         const locationName = selectedLocationButton.getAttribute('data-location');
-        if (!locationName) return;
+        if (!locationName) {
+            console.error("Selected location button has no data-location attribute!");
+            return;
+        }
+        
+        console.log("Selected location:", locationName);
         
         // Get location-specific hiding spots
         const hidingSpots = this.getLocationHidingSpots(locationName);
+        console.log("Available hiding spots:", hidingSpots);
         
         // Create idol search options
         const choiceTexts = hidingSpots.map(spot => `Search ${spot}`);
@@ -76,6 +91,7 @@ class IdolSystem {
             "Where would you like to search for a hidden immunity idol?",
             choiceTexts,
             (choice) => {
+                console.log("Selected hiding spot:", hidingSpots[choice]);
                 this.gameManager.dialogueSystem.hideDialogue();
                 this.startIdolSearch(hidingSpots[choice]);
             }
