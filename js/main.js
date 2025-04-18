@@ -308,11 +308,14 @@ function updateGameMenu() {
         }
         inventoryHTML += `<p id="idols-in-play">Idols in Play: ${totalIdols}</p>`;
         
+        // Get player tribe
+        const playerTribe = gameManager.getPlayerTribe();
+        
         // Show immunity status
         const hasIndividualImmunity = player.hasImmunity;
-        const tribeHasImmunity = playerTribe.isImmune === true || 
+        const tribeHasImmunity = playerTribe && (playerTribe.isImmune === true || 
                              (playerTribe.members.some(member => member.hasImmunity) && 
-                              gameManager.getGamePhase() === "preMerge");
+                              gameManager.getGamePhase() === "preMerge"));
         
         const hasImmunity = hasIndividualImmunity || tribeHasImmunity;
         
@@ -419,9 +422,9 @@ function updateInventoryDisplay() {
     
     // Update immunity status - check both individual immunity and tribe immunity
     const hasIndividualImmunity = player.hasImmunity;
-    const tribeHasImmunity = playerTribe.isImmune === true || 
+    const tribeHasImmunity = playerTribe && (playerTribe.isImmune === true || 
                             (playerTribe.members.some(member => member.hasImmunity) && 
-                             gameManager.getGamePhase() === "preMerge");
+                             gameManager.getGamePhase() === "preMerge"));
     
     const hasImmunity = hasIndividualImmunity || tribeHasImmunity;
     
