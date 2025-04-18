@@ -433,208 +433,932 @@ const CampScreen = {
         // Get personality insight
         const personalityInsight = gameManager.relationshipSystem.getPersonalityInsight(tribeMate);
         
-        // Generate dialogue based on relationship level
-        let dialogue;
-        if (relationship < 30) {
-            dialogue = `${tribeMate.name} seems uncomfortable as you approach. ${personalityInsight}`;
-        } else if (relationship < 60) {
-            dialogue = `${tribeMate.name} greets you with a casual nod. ${personalityInsight}`;
+        // Create a custom chat UI
+        const chatContainer = document.createElement('div');
+        chatContainer.className = 'chat-container';
+        chatContainer.id = 'social-chat-container';
+        
+        // Chat header
+        const chatHeader = document.createElement('div');
+        chatHeader.className = 'chat-header';
+        
+        const chatAvatar = document.createElement('div');
+        chatAvatar.className = 'chat-avatar';
+        chatAvatar.textContent = tribeMate.name.charAt(0);
+        
+        const chatName = document.createElement('div');
+        chatName.className = 'chat-name';
+        chatName.textContent = tribeMate.name;
+        
+        const chatStatus = document.createElement('div');
+        chatStatus.className = 'chat-status';
+        chatStatus.textContent = relationshipDesc;
+        
+        chatHeader.appendChild(chatAvatar);
+        chatHeader.appendChild(chatName);
+        chatHeader.appendChild(chatStatus);
+        
+        // Chat messages
+        const chatMessages = document.createElement('div');
+        chatMessages.className = 'chat-messages';
+        chatMessages.id = 'social-chat-messages';
+        
+        // Chat response options
+        const chatOptions = document.createElement('div');
+        chatOptions.className = 'chat-response-options';
+        chatOptions.id = 'social-chat-options';
+        
+        // Assemble chat container
+        chatContainer.appendChild(chatHeader);
+        chatContainer.appendChild(chatMessages);
+        chatContainer.appendChild(chatOptions);
+        
+        // Insert before the proceed to challenge button
+        const proceedButton = document.getElementById('proceed-to-challenge-button');
+        if (proceedButton && proceedButton.parentNode) {
+            proceedButton.parentNode.insertBefore(chatContainer, proceedButton);
         } else {
-            dialogue = `${tribeMate.name} smiles as you walk up. ${personalityInsight}`;
+            // Fallback insertion location
+            const campScreen = document.getElementById('camp-screen');
+            if (campScreen) {
+                campScreen.appendChild(chatContainer);
+            }
         }
         
-        // Add memory reference if there are previous interactions
+        // Add initial messages
+        this.addChatMessage(chatMessages, tribeMate.name, this.getGreeting(relationship, tribeMate), 'incoming');
+        
+        // If there are memories, add a reference to them
         if (hasMemories) {
             const mostImportantMemory = memories[0]; // Already sorted by importance
-            dialogue += `\n\nThey mention your previous conversation about ${mostImportantMemory.text}`;
+            setTimeout(() => {
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    `Remember when we talked about ${mostImportantMemory.text}?`, 
+                    'incoming'
+                );
+            }, 1000);
         }
         
-        // More conversation options based on relationship level
-        const choices = [];
+        // If relationship is good enough, add the personality insight
+        if (relationship >= 40) {
+            setTimeout(() => {
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    personalityInsight, 
+                    'incoming'
+                );
+            }, hasMemories ? 2000 : 1000);
+        }
+        
+        // Show typing indicator briefly before displaying options
+        this.showTypingIndicator(chatMessages);
+        
+        // Define chat options
+        setTimeout(() => {
+            this.showChatOptions(tribeMate, relationship, chatOptions, chatMessages);
+        }, 2500);
+    },
+    
+    getGreeting(relationship, tribeMate) {
+        if (relationship < 30) {
+            return `*${tribeMate.name} seems uncomfortable as you approach*\nHey... what's up?`;
+        } else if (relationship < 60) {
+            return `*nods*\nHey there. What's going on?`;
+        } else {
+            return `*smiles warmly*\nHey! Great to see you. How are you doing?`;
+        }
+    },
+    
+    showTypingIndicator(chatMessages) {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'chat-typing';
+        typingIndicator.innerHTML = 'Typing<div class="chat-typing-dots"><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div></div>';
+        chatMessages.appendChild(typingIndicator);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+            typingIndicator.remove();
+        }, 2000);
+    },
+    
+    addChatMessage(chatMessages, speaker, text, type) {
+        // Create message element
+        const message = document.createElement('div');
+        message.className = `message message-${type}`;
+        
+        // Handle potential formatting (text in asterisks becomes italic)
+        let formattedText = text;
+        if (text.includes('*')) {
+            formattedText = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        }
+        
+        // Support for newlines
+        formattedText = formattedText.replace(/\n/g, '<br>');
+        
+        message.innerHTML = formattedText;
+        
+        // Add time element
+        const timeElement = document.createElement('div');
+        timeElement.className = 'message-time';
+        timeElement.textContent = this.getTimeString();
+        message.appendChild(timeElement);
+        
+        // Add to chat messages
+        chatMessages.appendChild(message);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    },
+    
+    getTimeString() {
+        const now = new Date();
+        return now.getHours().toString().padStart(2, '0') + ':' + 
+               now.getMinutes().toString().padStart(2, '0');
+    },
+    
+    showChatOptions(tribeMate, relationship, chatOptions, chatMessages) {
+        // Clear current options
+        chatOptions.innerHTML = '';
         
         // Basic options for everyone
-        choices.push("Talk about camp life (+1 Relationship)");
-        choices.push("Share personal stories (+2 Relationship)");
+        this.addChatOption(
+            chatOptions, 
+            "Talk about camp life", 
+            "personal",
+            () => this.handleCampLifeChat(tribeMate, chatMessages, chatOptions)
+        );
+        
+        this.addChatOption(
+            chatOptions, 
+            "Share personal stories", 
+            "personal",
+            () => this.handlePersonalStories(tribeMate, chatMessages, chatOptions)
+        );
         
         // Strategic options unlock at different relationship levels
         if (relationship >= 40) {
-            choices.push("Discuss other tribe members (Strategic)");
-        }
-        if (relationship >= 60) {
-            choices.push("Talk about alliance strategy (Alliance)");
-        }
-        if (relationship >= 75) {
-            choices.push("Share secret information (Deep Trust)");
+            this.addChatOption(
+                chatOptions, 
+                "Discuss other tribe members", 
+                "strategic",
+                () => this.handleDiscussOthers(tribeMate, chatMessages, chatOptions)
+            );
         }
         
-        gameManager.dialogueSystem.showDialogue(dialogue, choices, (choice) => {
-            const selectedOption = choices[choice];
-            let memoryText = "";
-            let importance = 3;
+        if (relationship >= 60) {
+            this.addChatOption(
+                chatOptions, 
+                "Talk about alliance strategy", 
+                "alliance",
+                () => this.handleAllianceStrategy(tribeMate, chatMessages, chatOptions)
+            );
+        }
+        
+        if (relationship >= 75) {
+            this.addChatOption(
+                chatOptions, 
+                "Share sensitive information", 
+                "alliance",
+                () => this.handleSecretInfo(tribeMate, chatMessages, chatOptions)
+            );
+        }
+        
+        // Add exit option
+        this.addChatOption(
+            chatOptions, 
+            "End conversation", 
+            "personal",
+            () => {
+                // Remove chat UI
+                const chatContainer = document.getElementById('social-chat-container');
+                if (chatContainer) {
+                    chatContainer.remove();
+                }
+            }
+        );
+    },
+    
+    addChatOption(container, text, type, callback) {
+        const option = document.createElement('div');
+        option.className = `chat-option chat-option-${type}`;
+        option.textContent = text;
+        option.addEventListener('click', callback);
+        container.appendChild(option);
+    },
+    
+    handleCampLifeChat(tribeMate, chatMessages, chatOptions) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Add player message
+        this.addChatMessage(
+            chatMessages, 
+            player.name, 
+            "So how are you handling camp life? The shelter's not too bad, right?", 
+            'outgoing'
+        );
+        
+        // Clear options temporarily
+        chatOptions.innerHTML = '';
+        
+        // Show typing indicator
+        this.showTypingIndicator(chatMessages);
+        
+        // Add tribe mate's response after delay
+        setTimeout(() => {
+            // Get a random response with 10% chance of negative response
+            const isNegativeResponse = Math.random() < 0.1;
+            let response, relationshipChange;
             
-            if (selectedOption.includes("camp life")) {
-                memoryText = "daily camp activities";
-                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
-                
-                gameManager.dialogueSystem.showDialogue(
-                    `You and ${tribeMate.name} discuss the fire, water situation, and daily camp activities. It's a pleasant conversation.`,
-                    ["Continue"],
-                    () => gameManager.dialogueSystem.hideDialogue()
-                );
+            if (isNegativeResponse) {
+                response = "*looks annoyed*\nHonestly? I'm tired of talking about the shelter and fire situation. Everyone's always complaining about the same things.";
+                relationshipChange = -1;
+            } else {
+                const responses = [
+                    "The shelter's holding up okay. I'm more worried about our fire situation though. We need to gather more wood before it rains.",
+                    "I'm just grateful we have any shelter at all. Back at home I'm used to much worse, believe me.",
+                    "It's not the Hilton, but it works! I actually slept pretty well last night, all things considered."
+                ];
+                response = responses[Math.floor(Math.random() * responses.length)];
+                relationshipChange = 1;
             }
-            else if (selectedOption.includes("personal stories")) {
-                memoryText = "personal life stories";
-                importance = 4;
-                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
-                
-                gameManager.dialogueSystem.showDialogue(
-                    `You share stories about your life back home. ${tribeMate.name} seems genuinely interested and opens up about their own experiences.`,
-                    ["Continue"],
-                    () => gameManager.dialogueSystem.hideDialogue()
-                );
+            
+            this.addChatMessage(chatMessages, tribeMate.name, response, 'incoming');
+            
+            // Update relationship
+            gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+            
+            // If negative response, show reaction
+            if (isNegativeResponse) {
+                setTimeout(() => {
+                    const reactionElement = document.createElement('div');
+                    reactionElement.className = 'message-reaction';
+                    reactionElement.textContent = `Relationship decreased by ${Math.abs(relationshipChange)}`;
+                    chatMessages.appendChild(reactionElement);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    const reactionElement = document.createElement('div');
+                    reactionElement.className = 'message-reaction';
+                    reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                    chatMessages.appendChild(reactionElement);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 500);
             }
-            else if (selectedOption.includes("other tribe members")) {
-                memoryText = "opinions on other players";
-                importance = 4;
-                
-                // Get a random tribe member to discuss
-                const otherMembers = this.getPlayerTribe().members.filter(m => 
-                    m !== player && m !== tribeMate
+            
+            // Record the memory
+            gameManager.relationshipSystem.addMemory(
+                player, 
+                tribeMate, 
+                "daily camp activities", 
+                3
+            );
+            
+            // Show options again after delay
+            setTimeout(() => {
+                this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+            }, 1500);
+        }, 2000);
+    },
+    
+    handlePersonalStories(tribeMate, chatMessages, chatOptions) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Add player message
+        this.addChatMessage(
+            chatMessages, 
+            player.name, 
+            "What's your life like back home? I'd love to hear more about you.", 
+            'outgoing'
+        );
+        
+        // Clear options temporarily
+        chatOptions.innerHTML = '';
+        
+        // Show typing indicator
+        this.showTypingIndicator(chatMessages);
+        
+        // Add tribe mate's response after delay
+        setTimeout(() => {
+            const responses = [
+                `*opens up*\nI work as a ${this.getRandomProfession()}. It's definitely different from being out here! At home I have ${this.getRandomHobby()} as a hobby. What about you?`,
+                `*smiles*\nWell, back home I live with ${this.getRandomFamily()}. I really miss them. This game is tough but I'm playing for them.`,
+                `*thinks for a moment*\nI'm actually going through some big changes at home. Just ${this.getRandomLifeEvent()} before coming out here, so this game is a major turning point for me.`
+            ];
+            const response = responses[Math.floor(Math.random() * responses.length)];
+            
+            this.addChatMessage(chatMessages, tribeMate.name, response, 'incoming');
+            
+            // Add player's follow-up response
+            setTimeout(() => {
+                this.addChatMessage(
+                    chatMessages, 
+                    player.name, 
+                    "That's really interesting. Thanks for sharing that with me.", 
+                    'outgoing'
                 );
                 
-                if (otherMembers.length > 0) {
-                    const discussTarget = otherMembers[Math.floor(Math.random() * otherMembers.length)];
-                    
-                    // Success chance based on relationship
-                    if (Math.random() * 100 < relationship) {
-                        const targetRelationship = gameManager.relationshipSystem.getRelationship(tribeMate, discussTarget);
-                        let opinion;
-                        
-                        if (targetRelationship < 30) opinion = "doesn't trust";
-                        else if (targetRelationship < 60) opinion = "is neutral about";
-                        else opinion = "trusts";
-                        
-                        gameManager.dialogueSystem.showDialogue(
-                            `${tribeMate.name} reveals that they ${opinion} ${discussTarget.name}. This is valuable information for your strategy.`,
-                            ["Good to know"],
-                            () => gameManager.dialogueSystem.hideDialogue()
-                        );
-                        
-                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
-                        memoryText = `their opinion of ${discussTarget.name}`;
-                    } else {
-                        gameManager.dialogueSystem.showDialogue(
-                            `${tribeMate.name} seems guarded and changes the subject when you bring up ${discussTarget.name}.`,
-                            ["Interesting"],
-                            () => gameManager.dialogueSystem.hideDialogue()
-                        );
-                        
-                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, -1);
-                        memoryText = "their unwillingness to gossip";
-                    }
-                }
-            }
-            else if (selectedOption.includes("alliance strategy")) {
-                memoryText = "alliance planning";
-                importance = 5;
-                
-                // Check if already in alliance
-                const inAlliance = gameManager.allianceSystem.areInSameAlliance(player, tribeMate);
-                
-                if (inAlliance) {
-                    // Discuss alliance strategy
-                    gameManager.dialogueSystem.showDialogue(
-                        `You and ${tribeMate.name} strategize about your alliance's next moves. They suggest targeting someone who's a physical threat at the next vote.`,
-                        ["Good plan"],
-                        () => gameManager.dialogueSystem.hideDialogue()
+                // Show tribe mate's appreciation
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        tribeMate.name, 
+                        "*seems to appreciate the conversation*\nIt's nice to talk about something besides strategy for once. Thanks for listening.", 
+                        'incoming'
                     );
                     
-                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
+                    // Update relationship
+                    const relationshipChange = 2;
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                    
+                    // Show relationship change
+                    setTimeout(() => {
+                        const reactionElement = document.createElement('div');
+                        reactionElement.className = 'message-reaction';
+                        reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                        chatMessages.appendChild(reactionElement);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 500);
+                    
+                    // Record the memory
+                    gameManager.relationshipSystem.addMemory(
+                        player, 
+                        tribeMate, 
+                        "personal life stories", 
+                        4
+                    );
+                    
+                    // Show options again after delay
+                    setTimeout(() => {
+                        this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+                    }, 1500);
+                }, 2000);
+            }, 2000);
+        }, 2000);
+    },
+    
+    handleDiscussOthers(tribeMate, chatMessages, chatOptions) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Get a random tribe member to discuss
+        const otherMembers = this.getPlayerTribe().members.filter(m => 
+            m !== player && m !== tribeMate
+        );
+        
+        if (otherMembers.length === 0) {
+            this.addChatMessage(
+                chatMessages, 
+                player.name, 
+                "I wanted to talk about the others, but there's not many of us left to discuss!", 
+                'outgoing'
+            );
+            
+            // Show options again after delay
+            setTimeout(() => {
+                this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+            }, 1500);
+            return;
+        }
+        
+        const discussTarget = otherMembers[Math.floor(Math.random() * otherMembers.length)];
+        
+        // Add player message
+        this.addChatMessage(
+            chatMessages, 
+            player.name, 
+            `What do you think about ${discussTarget.name}? Do you trust them?`, 
+            'outgoing'
+        );
+        
+        // Clear options temporarily
+        chatOptions.innerHTML = '';
+        
+        // Show typing indicator
+        this.showTypingIndicator(chatMessages);
+        
+        // Success chance based on relationship
+        const relationship = gameManager.relationshipSystem.getRelationship(player, tribeMate);
+        const isSuccessful = Math.random() * 100 < relationship;
+        
+        setTimeout(() => {
+            if (isSuccessful) {
+                const targetRelationship = gameManager.relationshipSystem.getRelationship(tribeMate, discussTarget);
+                let opinion, response;
+                
+                if (targetRelationship < 30) {
+                    opinion = "doesn't trust";
+                    response = `*lowers voice*\nBetween you and me, I don't trust ${discussTarget.name} at all. Something feels off about them, and I've noticed them talking to everyone separately.`;
+                } else if (targetRelationship < 60) {
+                    opinion = "is neutral about";
+                    response = `*shrugs*\nI'm still figuring ${discussTarget.name} out. They seem okay, but I'm not ready to put my game in their hands yet.`;
                 } else {
-                    // Propose alliance
-                    gameManager.dialogueSystem.showDialogue(
-                        `You suggest forming an alliance with ${tribeMate.name}. They seem ${relationship > 70 ? "very receptive" : "cautiously interested"} to the idea.`,
-                        ["Let's do it"],
-                        () => {
-                            const alliance = gameManager.allianceSystem.createAllianceBetween(player, tribeMate);
-                            if (alliance) {
-                                gameManager.dialogueSystem.showDialogue(
-                                    `You've formed an alliance with ${tribeMate.name}!`,
-                                    ["Excellent"],
-                                    () => gameManager.dialogueSystem.hideDialogue()
-                                );
-                            } else {
-                                gameManager.dialogueSystem.showDialogue(
-                                    `${tribeMate.name} wants to think about it more before committing to an alliance.`,
-                                    ["Fair enough"],
-                                    () => gameManager.dialogueSystem.hideDialogue()
-                                );
-                            }
-                        }
-                    );
+                    opinion = "trusts";
+                    response = `*nods confidently*\nI actually really like ${discussTarget.name}. We've connected well, and I think they're playing an honest game so far.`;
                 }
-            }
-            else if (selectedOption.includes("secret information")) {
-                memoryText = "shared secrets";
-                importance = 5;
                 
-                // Determine if they have an idol
-                if (tribeMate.hasIdol) {
-                    gameManager.dialogueSystem.showDialogue(
-                        `In a moment of trust, ${tribeMate.name} reveals to you that they found a hidden immunity idol!`,
-                        ["That's huge information!"],
-                        () => gameManager.dialogueSystem.hideDialogue()
+                this.addChatMessage(chatMessages, tribeMate.name, response, 'incoming');
+                
+                // Player response
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "That's really good to know. Thanks for being honest with me.", 
+                        'outgoing'
                     );
                     
-                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 3);
-                } else if (player.hasIdol) {
-                    // Player can share idol info
-                    gameManager.dialogueSystem.showDialogue(
-                        `Do you want to tell ${tribeMate.name} about your hidden immunity idol?`,
-                        ["Yes, I trust them", "No, keep it secret"],
-                        (shareChoice) => {
-                            if (shareChoice === 0) {
-                                gameManager.dialogueSystem.showDialogue(
-                                    `You confide in ${tribeMate.name} about your hidden immunity idol. They promise to keep your secret.`,
-                                    ["I hope I can trust them"],
-                                    () => gameManager.dialogueSystem.hideDialogue()
+                    // Update relationship
+                    const relationshipChange = 1;
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                    
+                    // Show relationship change
+                    setTimeout(() => {
+                        const reactionElement = document.createElement('div');
+                        reactionElement.className = 'message-reaction';
+                        reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                        reactionElement.textContent += `\nYou learned that ${tribeMate.name} ${opinion} ${discussTarget.name}`;
+                        chatMessages.appendChild(reactionElement);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 500);
+                    
+                    // Record the memory
+                    gameManager.relationshipSystem.addMemory(
+                        player, 
+                        tribeMate, 
+                        `their opinion of ${discussTarget.name}`, 
+                        4
+                    );
+                }, 1500);
+            } else {
+                // Failed to get information
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    `*suddenly looks guarded*\nI don't think we should be talking about ${discussTarget.name} behind their back. It doesn't feel right.`, 
+                    'incoming'
+                );
+                
+                // Player response
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "You're right, I shouldn't have asked. Sorry about that.", 
+                        'outgoing'
+                    );
+                    
+                    // Update relationship - negative impact
+                    const relationshipChange = -1;
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                    
+                    // Show relationship change
+                    setTimeout(() => {
+                        const reactionElement = document.createElement('div');
+                        reactionElement.className = 'message-reaction';
+                        reactionElement.textContent = `Relationship decreased by ${Math.abs(relationshipChange)}`;
+                        reactionElement.textContent += `\n${tribeMate.name} didn't want to gossip about others`;
+                        chatMessages.appendChild(reactionElement);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 500);
+                    
+                    // Record the memory
+                    gameManager.relationshipSystem.addMemory(
+                        player, 
+                        tribeMate, 
+                        "their unwillingness to gossip", 
+                        3
+                    );
+                }, 1500);
+            }
+            
+            // Show options again after delay
+            setTimeout(() => {
+                this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+            }, 3000);
+        }, 2000);
+    },
+    
+    handleAllianceStrategy(tribeMate, chatMessages, chatOptions) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Check if already in alliance
+        const inAlliance = gameManager.allianceSystem.areInSameAlliance(player, tribeMate);
+        
+        // Add player message
+        this.addChatMessage(
+            chatMessages, 
+            player.name, 
+            inAlliance ? 
+                "Let's talk about our alliance strategy. Who should we target next?" : 
+                "I think we should work together. Would you be interested in forming an alliance?", 
+            'outgoing'
+        );
+        
+        // Clear options temporarily
+        chatOptions.innerHTML = '';
+        
+        // Show typing indicator
+        this.showTypingIndicator(chatMessages);
+        
+        setTimeout(() => {
+            if (inAlliance) {
+                // Already in alliance - discuss strategy
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    "*moves closer and speaks quietly*\nI've been thinking about that too. I think we should target someone who's a physical threat at the next vote. We need to break up any challenge beasts before the merge.", 
+                    'incoming'
+                );
+                
+                // Player response
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "That makes a lot of sense. I'm with you on that plan.", 
+                        'outgoing'
+                    );
+                    
+                    // Final response
+                    setTimeout(() => {
+                        this.addChatMessage(
+                            chatMessages, 
+                            tribeMate.name, 
+                            "*nods*\nGreat, glad we're on the same page. Let's keep checking in as things develop.", 
+                            'incoming'
+                        );
+                        
+                        // Update relationship
+                        const relationshipChange = 2;
+                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                        
+                        // Show relationship change
+                        setTimeout(() => {
+                            const reactionElement = document.createElement('div');
+                            reactionElement.className = 'message-reaction';
+                            reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                            reactionElement.textContent += '\nYour alliance is strengthened';
+                            chatMessages.appendChild(reactionElement);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }, 500);
+                        
+                        // Record the memory
+                        gameManager.relationshipSystem.addMemory(
+                            player, 
+                            tribeMate, 
+                            "alliance planning", 
+                            5
+                        );
+                        
+                        // Show options again after delay
+                        setTimeout(() => {
+                            this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+                        }, 1500);
+                    }, 1500);
+                }, 1500);
+            } else {
+                // Not in alliance - try to form one
+                const relationship = gameManager.relationshipSystem.getRelationship(player, tribeMate);
+                const receptivity = relationship > 70 ? "very receptive" : "cautiously interested";
+                
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    `*looks ${receptivity === "very receptive" ? "excited" : "thoughtful"}*\nAn alliance? I've been thinking about my options... ${receptivity === "very receptive" ? "I think that's a great idea!" : "Tell me more about what you're thinking."}`, 
+                    'incoming'
+                );
+                
+                // Player follow up
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "I think we could work well together. We can watch each other's backs and make it far in this game.", 
+                        'outgoing'
+                    );
+                    
+                    // Create alliance attempt
+                    setTimeout(() => {
+                        const alliance = gameManager.allianceSystem.createAllianceBetween(player, tribeMate);
+                        
+                        if (alliance) {
+                            this.addChatMessage(
+                                chatMessages, 
+                                tribeMate.name, 
+                                "*reaches out to shake hands*\nI'm in. Let's do this together.", 
+                                'incoming'
+                            );
+                            
+                            // Show alliance formation confirmation
+                            setTimeout(() => {
+                                const reactionElement = document.createElement('div');
+                                reactionElement.className = 'message-reaction';
+                                reactionElement.textContent = `You've formed an alliance with ${tribeMate.name}!`;
+                                chatMessages.appendChild(reactionElement);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                
+                                // Record the memory
+                                gameManager.relationshipSystem.addMemory(
+                                    player, 
+                                    tribeMate, 
+                                    "forming our alliance", 
+                                    5
+                                );
+                            }, 500);
+                        } else {
+                            this.addChatMessage(
+                                chatMessages, 
+                                tribeMate.name, 
+                                "*hesitates*\nI appreciate the offer, but I need to think about it more. Let's talk again later, okay?", 
+                                'incoming'
+                            );
+                            
+                            // Show alliance rejection
+                            setTimeout(() => {
+                                const reactionElement = document.createElement('div');
+                                reactionElement.className = 'message-reaction';
+                                reactionElement.textContent = `${tribeMate.name} isn't ready to form an alliance yet`;
+                                chatMessages.appendChild(reactionElement);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                
+                                // Record the memory
+                                gameManager.relationshipSystem.addMemory(
+                                    player, 
+                                    tribeMate, 
+                                    "discussing potential alliance", 
+                                    4
+                                );
+                            }, 500);
+                        }
+                        
+                        // Show options again after delay
+                        setTimeout(() => {
+                            this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+                        }, 2000);
+                    }, 1500);
+                }, 1500);
+            }
+        }, 2000);
+    },
+    
+    handleSecretInfo(tribeMate, chatMessages, chatOptions) {
+        const player = gameManager.getPlayerSurvivor();
+        
+        // Add player message
+        this.addChatMessage(
+            chatMessages, 
+            player.name, 
+            "I wanted to talk to you about something more... sensitive. Do you have any information you've been keeping to yourself?", 
+            'outgoing'
+        );
+        
+        // Clear options temporarily
+        chatOptions.innerHTML = '';
+        
+        // Show typing indicator
+        this.showTypingIndicator(chatMessages);
+        
+        setTimeout(() => {
+            // Determine if they have an idol
+            if (tribeMate.hasIdol) {
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    "*looks around nervously and lowers voice to a whisper*\nOkay, I'm trusting you with this... I found a hidden immunity idol.", 
+                    'incoming'
+                );
+                
+                // Player response
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "*eyes widen*\nWow, that's huge! Thank you for trusting me with that.", 
+                        'outgoing'
+                    );
+                    
+                    // Update relationship
+                    const relationshipChange = 3;
+                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                    
+                    // Show relationship change
+                    setTimeout(() => {
+                        const reactionElement = document.createElement('div');
+                        reactionElement.className = 'message-reaction';
+                        reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                        reactionElement.textContent += '\nYou learned that they have a hidden immunity idol!';
+                        chatMessages.appendChild(reactionElement);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 500);
+                    
+                    // Record the memory
+                    gameManager.relationshipSystem.addMemory(
+                        player, 
+                        tribeMate, 
+                        "their hidden immunity idol", 
+                        5
+                    );
+                }, 1500);
+            } else if (player.hasIdol) {
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    "I don't have anything special to share. Do you have something you wanted to tell me?", 
+                    'incoming'
+                );
+                
+                // Add player idol sharing options
+                setTimeout(() => {
+                    // Add special chat options for idol
+                    chatOptions.innerHTML = '';
+                    
+                    this.addChatOption(
+                        chatOptions, 
+                        "Share that you have an idol", 
+                        "alliance",
+                        () => {
+                            this.addChatMessage(
+                                chatMessages, 
+                                player.name, 
+                                "*whispers*\nI found a hidden immunity idol. I wanted you to know because I trust you.", 
+                                'outgoing'
+                            );
+                            
+                            chatOptions.innerHTML = '';
+                            this.showTypingIndicator(chatMessages);
+                            
+                            setTimeout(() => {
+                                this.addChatMessage(
+                                    chatMessages, 
+                                    tribeMate.name, 
+                                    "*looks shocked*\nThat's incredible! I promise I'll keep your secret. Thank you for trusting me with this.", 
+                                    'incoming'
                                 );
                                 
-                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 4);
-                                // This memory is important - they know about your idol!
-                                memoryText = "your hidden immunity idol";
-                            } else {
-                                gameManager.dialogueSystem.showDialogue(
-                                    `You decide to keep your idol a secret for now.`,
-                                    ["Better safe than sorry"],
-                                    () => gameManager.dialogueSystem.hideDialogue()
+                                // Update relationship significantly
+                                const relationshipChange = 4;
+                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                                
+                                // Show relationship change
+                                setTimeout(() => {
+                                    const reactionElement = document.createElement('div');
+                                    reactionElement.className = 'message-reaction';
+                                    reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                                    reactionElement.textContent += '\nYou shared your idol secret with them';
+                                    chatMessages.appendChild(reactionElement);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }, 500);
+                                
+                                // Record the memory - this is important!
+                                gameManager.relationshipSystem.addMemory(
+                                    player, 
+                                    tribeMate, 
+                                    "your hidden immunity idol", 
+                                    5
+                                );
+                                
+                                // Show options again after delay
+                                setTimeout(() => {
+                                    this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+                                }, 2000);
+                            }, 2000);
+                        }
+                    );
+                    
+                    this.addChatOption(
+                        chatOptions, 
+                        "Keep your idol secret", 
+                        "strategic",
+                        () => {
+                            this.addChatMessage(
+                                chatMessages, 
+                                player.name, 
+                                "No, just checking if you had anything to share. It's always good to talk strategy.", 
+                                'outgoing'
+                            );
+                            
+                            chatOptions.innerHTML = '';
+                            this.showTypingIndicator(chatMessages);
+                            
+                            setTimeout(() => {
+                                this.addChatMessage(
+                                    chatMessages, 
+                                    tribeMate.name, 
+                                    "Definitely. I'll let you know if I learn anything important.", 
+                                    'incoming'
                                 );
                                 
                                 // Still had a good conversation
-                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, 1);
-                                memoryText = "potential game strategies";
-                            }
+                                const relationshipChange = 1;
+                                gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                                
+                                // Show relationship change
+                                setTimeout(() => {
+                                    const reactionElement = document.createElement('div');
+                                    reactionElement.className = 'message-reaction';
+                                    reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                                    chatMessages.appendChild(reactionElement);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }, 500);
+                                
+                                // Record the memory
+                                gameManager.relationshipSystem.addMemory(
+                                    player, 
+                                    tribeMate, 
+                                    "potential game strategies", 
+                                    3
+                                );
+                                
+                                // Show options again after delay
+                                setTimeout(() => {
+                                    this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+                                }, 1500);
+                            }, 1500);
                         }
                     );
-                    return; // Exit early since we have nested dialogues
-                } else {
-                    // Generic strategy talk
-                    gameManager.dialogueSystem.showDialogue(
-                        `You and ${tribeMate.name} have a deep strategic conversation about the game. You both share your thoughts on who might be targeting each other.`,
-                        ["This is valuable"],
-                        () => gameManager.dialogueSystem.hideDialogue()
+                }, 1000);
+                return; // Exit early since we've added special options
+            } else {
+                // Generic strategy talk
+                this.addChatMessage(
+                    chatMessages, 
+                    tribeMate.name, 
+                    "*leans in*\nI've been observing everyone closely. I think there might be a hidden alliance forming between some of the others. We should keep an eye on that.", 
+                    'incoming'
+                );
+                
+                // Player response
+                setTimeout(() => {
+                    this.addChatMessage(
+                        chatMessages, 
+                        player.name, 
+                        "That's good intel. We'll need to be careful about who we trust going forward.", 
+                        'outgoing'
                     );
                     
-                    gameManager.relationshipSystem.changeRelationship(player, tribeMate, 2);
-                }
+                    // Final response
+                    setTimeout(() => {
+                        this.addChatMessage(
+                            chatMessages, 
+                            tribeMate.name, 
+                            "Exactly. Let's keep sharing information like this. It'll help us both navigate the game.", 
+                            'incoming'
+                        );
+                        
+                        // Update relationship
+                        const relationshipChange = 2;
+                        gameManager.relationshipSystem.changeRelationship(player, tribeMate, relationshipChange);
+                        
+                        // Show relationship change
+                        setTimeout(() => {
+                            const reactionElement = document.createElement('div');
+                            reactionElement.className = 'message-reaction';
+                            reactionElement.textContent = `Relationship increased by ${relationshipChange}`;
+                            chatMessages.appendChild(reactionElement);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }, 500);
+                        
+                        // Record the memory
+                        gameManager.relationshipSystem.addMemory(
+                            player, 
+                            tribeMate, 
+                            "strategic game information", 
+                            4
+                        );
+                    }, 1500);
+                }, 1500);
             }
             
-            // Record the memory of this interaction
-            if (memoryText) {
-                gameManager.relationshipSystem.addMemory(player, tribeMate, memoryText, importance);
-            }
-        });
+            // Show options again after delay (except for the player idol case which returns early)
+            setTimeout(() => {
+                this.showChatOptions(tribeMate, gameManager.relationshipSystem.getRelationship(player, tribeMate), chatOptions, chatMessages);
+            }, 5000);
+        }, 2000);
     },
+    
+    // Helper functions for chat variety
+    getRandomProfession() {
+        const professions = ["teacher", "nurse", "software engineer", "sales manager", "chef", "personal trainer", "accountant", "construction worker"];
+        return professions[Math.floor(Math.random() * professions.length)];
+    },
+    
+    getRandomHobby() {
+        const hobbies = ["painting", "hiking", "video games", "cooking", "playing guitar", "photography", "yoga", "gardening"];
+        return hobbies[Math.floor(Math.random() * hobbies.length)];
+    },
+    
+    getRandomFamily() {
+        const family = ["my spouse and two kids", "my parents", "my three roommates", "my brother and his family", "just my dog, but he's family"];
+        return family[Math.floor(Math.random() * family.length)];
+    },
+    
+    getRandomLifeEvent() {
+        const events = ["got married", "changed careers", "moved to a new city", "finished grad school", "lost a close family member"];
+        return events[Math.floor(Math.random() * events.length)];
+    },,
     
     /**
      * Rest action
@@ -684,22 +1408,375 @@ const CampScreen = {
      * @param {string} type - The type of strategic action
      */
     strategic(type) {
-        let message = "";
+        const player = gameManager.getPlayerSurvivor();
+        const playerTribe = gameManager.getPlayerTribe();
         
         switch (type) {
             case 'strategic':
-                message = "You took some time to think about your game strategy.";
+                // Create a chat-like UI for strategic insights
+                this.showStrategyInsights();
                 break;
+                
             case 'trainPhysical':
-                message = "You worked on improving your physical abilities.";
+                // Randomly increase physical stats
+                let physicalStat = ['strength', 'endurance', 'agility'][Math.floor(Math.random() * 3)];
+                let statIncrease = Math.random() < 0.7 ? 1 : 2; // 70% chance of +1, 30% chance of +2
+                
+                if (player.stats && player.stats[physicalStat] !== undefined) {
+                    player.stats[physicalStat] = Math.min(10, player.stats[physicalStat] + statIncrease);
+                    
+                    // Show result with stat info
+                    let message = `You worked on improving your physical abilities. Your ${physicalStat} increased by ${statIncrease}!`;
+                    if (statIncrease > 1) {
+                        message += " That was a great training session!";
+                    }
+                    this.showActionResult(message);
+                } else {
+                    this.showActionResult("You worked on improving your physical abilities.");
+                }
                 break;
+                
             case 'trainMental':
-                message = "You practiced puzzles to sharpen your mental skills.";
+                // Randomly increase mental stats
+                let mentalStat = ['intelligence', 'social', 'perception'][Math.floor(Math.random() * 3)];
+                let mentalIncrease = Math.random() < 0.7 ? 1 : 2; // 70% chance of +1, 30% chance of +2
+                
+                if (player.stats && player.stats[mentalStat] !== undefined) {
+                    player.stats[mentalStat] = Math.min(10, player.stats[mentalStat] + mentalIncrease);
+                    
+                    // Show result with stat info
+                    let message = `You practiced puzzles and mental exercises. Your ${mentalStat} increased by ${mentalIncrease}!`;
+                    if (mentalIncrease > 1) {
+                        message += " You're really getting better at this!";
+                    }
+                    this.showActionResult(message);
+                } else {
+                    this.showActionResult("You practiced puzzles to sharpen your mental skills.");
+                }
                 break;
         }
-        
-        this.showActionResult(message);
     },
+    
+    showStrategyInsights() {
+        const player = gameManager.getPlayerSurvivor();
+        const playerTribe = gameManager.getPlayerTribe();
+        const allTribes = gameManager.getTribes();
+        const gamePhase = gameManager.getGamePhase();
+        
+        // Create chat-like container for strategy insights
+        const strategyContainer = document.createElement('div');
+        strategyContainer.className = 'chat-container';
+        strategyContainer.id = 'strategy-chat-container';
+        strategyContainer.style.marginBottom = '20px';
+        
+        // Strategy header
+        const strategyHeader = document.createElement('div');
+        strategyHeader.className = 'chat-header';
+        strategyHeader.style.backgroundColor = '#2d8a50'; // Jungle green
+        
+        const headerTitle = document.createElement('div');
+        headerTitle.className = 'chat-name';
+        headerTitle.textContent = 'Strategic Analysis';
+        
+        strategyHeader.appendChild(headerTitle);
+        
+        // Strategy content
+        const strategyContent = document.createElement('div');
+        strategyContent.className = 'chat-messages';
+        strategyContent.style.maxHeight = '350px';
+        
+        // Strategy options
+        const strategyOptions = document.createElement('div');
+        strategyOptions.className = 'chat-response-options';
+        
+        // Assemble strategy container
+        strategyContainer.appendChild(strategyHeader);
+        strategyContainer.appendChild(strategyContent);
+        strategyContainer.appendChild(strategyOptions);
+        
+        // Insert after the location actions
+        const locationActions = document.getElementById('location-actions');
+        if (locationActions && locationActions.parentNode) {
+            locationActions.parentNode.insertBefore(strategyContainer, locationActions.nextSibling);
+        } else {
+            // Fallback insertion
+            const campScreen = document.getElementById('camp-screen');
+            if (campScreen) {
+                campScreen.appendChild(strategyContainer);
+            }
+        }
+        
+        // Add initial thinking message
+        this.addStrategyMessage(strategyContent, "Taking some time to think and analyze the current game situation...");
+        
+        // Add game state analysis
+        setTimeout(() => {
+            // Game phase insights
+            let phaseInsight = "";
+            
+            if (gamePhase === "preMerge") {
+                phaseInsight = "You're in the pre-merge phase. Focus on keeping your tribe strong for challenges while forming solid relationships.";
+                
+                // Add tribe strength comparison
+                if (allTribes.length > 1) {
+                    setTimeout(() => {
+                        let tribeStrengthMsg = "Tribe strength analysis:\n";
+                        
+                        allTribes.forEach(tribe => {
+                            const tribeStrength = this.calculateTribeStrength(tribe);
+                            let strengthDesc = "";
+                            
+                            if (tribeStrength > 7) strengthDesc = "very strong";
+                            else if (tribeStrength > 5) strengthDesc = "strong";
+                            else if (tribeStrength > 3) strengthDesc = "average";
+                            else strengthDesc = "weak";
+                            
+                            tribeStrengthMsg += `- ${tribe.tribeName}: ${strengthDesc} (${tribe.members.length} members)\n`;
+                        });
+                        
+                        this.addStrategyMessage(strategyContent, tribeStrengthMsg);
+                    }, 1500);
+                }
+            } else {
+                phaseInsight = "You're in the post-merge phase. Individual immunities and hidden idols are crucial now. Make sure you have strong allies.";
+                
+                // Add jury information if relevant
+                const juryMembers = gameManager.getJury ? gameManager.getJury() : [];
+                if (juryMembers && juryMembers.length > 0) {
+                    phaseInsight += ` There are currently ${juryMembers.length} jury members who will vote for the winner.`;
+                }
+            }
+            
+            this.addStrategyMessage(strategyContent, phaseInsight);
+            
+            // Add alliance analysis
+            setTimeout(() => {
+                const playerAlliances = gameManager.allianceSystem.getSurvivorAlliances(player);
+                
+                if (playerAlliances && playerAlliances.length > 0) {
+                    let allianceMsg = `You're currently in ${playerAlliances.length} alliance(s):\n`;
+                    
+                    playerAlliances.forEach(alliance => {
+                        const members = alliance.members.map(m => m.name).join(", ");
+                        const strength = alliance.strength || "unknown";
+                        let strengthDesc = "";
+                        
+                        if (strength > 80) strengthDesc = "very strong";
+                        else if (strength > 60) strengthDesc = "strong";
+                        else if (strength > 40) strengthDesc = "moderate";
+                        else strengthDesc = "weak";
+                        
+                        allianceMsg += `- With ${members} (${strengthDesc})\n`;
+                    });
+                    
+                    this.addStrategyMessage(strategyContent, allianceMsg);
+                } else {
+                    this.addStrategyMessage(strategyContent, "You're not currently in any formal alliances. This could be risky - consider building stronger connections with tribe mates.");
+                }
+            }, 3000);
+            
+            // Add idol information
+            setTimeout(() => {
+                const playerHasIdol = player.hasIdol;
+                const idolsInPlay = gameManager.idolSystem.getIdolsInPlay();
+                
+                let idolMsg = "";
+                if (playerHasIdol) {
+                    idolMsg = "You have a hidden immunity idol. Use it wisely - it could save you at a crucial tribal council.";
+                } else {
+                    idolMsg = "You don't have a hidden immunity idol.";
+                    if (idolsInPlay > 0) {
+                        idolMsg += ` There ${idolsInPlay === 1 ? 'is' : 'are'} ${idolsInPlay} idol${idolsInPlay > 1 ? 's' : ''} in play. Keep searching!`;
+                    }
+                }
+                
+                this.addStrategyMessage(strategyContent, idolMsg);
+            }, 4500);
+            
+            // Add tribe dynamics or potential targets
+            setTimeout(() => {
+                if (gamePhase === "preMerge") {
+                    // In pre-merge, analyze tribe dynamics
+                    const tribeMembers = playerTribe.members.filter(m => !m.isPlayer);
+                    
+                    if (tribeMembers.length > 0) {
+                        // Find most and least connected tribe mates
+                        let highestRelTotal = 0;
+                        let lowestRelTotal = 9999;
+                        let mostConnected = null;
+                        let leastConnected = null;
+                        
+                        tribeMembers.forEach(member => {
+                            let relTotal = 0;
+                            tribeMembers.forEach(other => {
+                                if (other !== member) {
+                                    const rel = gameManager.relationshipSystem.getRelationship(member, other);
+                                    relTotal += rel;
+                                }
+                            });
+                            
+                            // Include relationship with player
+                            const relWithPlayer = gameManager.relationshipSystem.getRelationship(member, player);
+                            relTotal += relWithPlayer;
+                            
+                            if (relTotal > highestRelTotal) {
+                                highestRelTotal = relTotal;
+                                mostConnected = member;
+                            }
+                            
+                            if (relTotal < lowestRelTotal) {
+                                lowestRelTotal = relTotal;
+                                leastConnected = member;
+                            }
+                        });
+                        
+                        let dynamicsMsg = "Tribe dynamics:\n";
+                        
+                        if (mostConnected) {
+                            dynamicsMsg += `- ${mostConnected.name} is well-connected and has strong relationships\n`;
+                        }
+                        
+                        if (leastConnected) {
+                            dynamicsMsg += `- ${leastConnected.name} seems isolated and could be a potential target\n`;
+                        }
+                        
+                        // Who might be targeting the player
+                        const playerRelationships = tribeMembers.map(member => {
+                            return {
+                                member: member,
+                                relationship: gameManager.relationshipSystem.getRelationship(member, player)
+                            };
+                        }).sort((a, b) => a.relationship - b.relationship);
+                        
+                        if (playerRelationships.length > 0 && playerRelationships[0].relationship < 40) {
+                            dynamicsMsg += `- Be careful of ${playerRelationships[0].member.name}, who might target you due to your low relationship (${playerRelationships[0].relationship}/100)`;
+                        }
+                        
+                        this.addStrategyMessage(strategyContent, dynamicsMsg);
+                    }
+                } else {
+                    // In post-merge, identify potential targets and threats
+                    const allPlayers = playerTribe.members.filter(m => !m.isPlayer);
+                    
+                    if (allPlayers.length > 0) {
+                        let threatsMsg = "Current threats and potential targets:\n";
+                        
+                        // Find physical threats
+                        const physicalThreats = allPlayers
+                            .filter(p => p.stats && (p.stats.strength > 7 || p.stats.endurance > 7))
+                            .map(p => p.name)
+                            .slice(0, 2);
+                        
+                        if (physicalThreats.length > 0) {
+                            threatsMsg += `- Physical threats: ${physicalThreats.join(", ")}\n`;
+                        }
+                        
+                        // Find strategic threats
+                        const strategicThreats = allPlayers
+                            .filter(p => p.stats && (p.stats.intelligence > 7 || p.stats.social > 7))
+                            .map(p => p.name)
+                            .slice(0, 2);
+                        
+                        if (strategicThreats.length > 0) {
+                            threatsMsg += `- Strategic threats: ${strategicThreats.join(", ")}\n`;
+                        }
+                        
+                        // Find potential easy votes
+                        const easyTargets = allPlayers
+                            .filter(p => {
+                                // Count how many people have low relationships with this person
+                                let lowRelCount = 0;
+                                allPlayers.forEach(other => {
+                                    if (other !== p) {
+                                        const rel = gameManager.relationshipSystem.getRelationship(other, p);
+                                        if (rel < 40) lowRelCount++;
+                                    }
+                                });
+                                return lowRelCount > allPlayers.length / 3; // More than 1/3 of players have low relationship
+                            })
+                            .map(p => p.name)
+                            .slice(0, 2);
+                        
+                        if (easyTargets.length > 0) {
+                            threatsMsg += `- Potential easy votes: ${easyTargets.join(", ")}`;
+                        }
+                        
+                        this.addStrategyMessage(strategyContent, threatsMsg);
+                    }
+                }
+            }, 6000);
+            
+            // Add close button after all insights are shown
+            setTimeout(() => {
+                this.addChatOption(
+                    strategyOptions,
+                    "Got it - Continue",
+                    "strategic",
+                    () => {
+                        const container = document.getElementById('strategy-chat-container');
+                        if (container) {
+                            container.remove();
+                        }
+                        
+                        // Show a summary message
+                        this.showActionResult("You took some time to analyze your game strategy and gained valuable insights.");
+                    }
+                );
+            }, 7500);
+        }, 1000);
+    },
+    
+    addStrategyMessage(container, text) {
+        // Create message element
+        const message = document.createElement('div');
+        message.className = 'message message-incoming';
+        message.style.backgroundColor = '#e8f5e9'; // Light green background
+        message.style.width = '95%';
+        message.style.maxWidth = '95%';
+        
+        // Format text (support for newlines)
+        const formattedText = text.replace(/\n/g, '<br>');
+        message.innerHTML = formattedText;
+        
+        // Add to container
+        container.appendChild(message);
+        
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    },
+    
+    calculateTribeStrength(tribe) {
+        // Calculate an approximate tribe strength based on member stats
+        let totalStrength = 0;
+        
+        tribe.members.forEach(member => {
+            if (member.stats) {
+                // Physical stats matter more for challenges
+                const physicalAvg = (
+                    (member.stats.strength || 5) + 
+                    (member.stats.endurance || 5) + 
+                    (member.stats.agility || 5)
+                ) / 3;
+                
+                // Mental stats matter less but still count
+                const mentalAvg = (
+                    (member.stats.intelligence || 5) + 
+                    (member.stats.social || 5) + 
+                    (member.stats.perception || 5)
+                ) / 3;
+                
+                // 70% physical, 30% mental for tribe strength
+                const memberStrength = (physicalAvg * 0.7) + (mentalAvg * 0.3);
+                totalStrength += memberStrength;
+            } else {
+                // Default value if no stats
+                totalStrength += 5;
+            }
+        });
+        
+        // Average strength per tribe member
+        return tribe.members.length > 0 ? totalStrength / tribe.members.length : 0;
+    },,
     
     /**
      * Show action result message
