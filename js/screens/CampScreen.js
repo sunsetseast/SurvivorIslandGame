@@ -172,18 +172,27 @@ window.CampScreen = {
      */
     createLocationButtons() {
         const locationButtonsContainer = document.getElementById('location-buttons');
-        if (!locationButtonsContainer) return;
+        if (!locationButtonsContainer) {
+            console.error("Location buttons container not found!");
+            return;
+        }
         
         // Clear container
         clearChildren(locationButtonsContainer);
         
+        console.log("Creating location buttons for campLocations:", campLocations);
+        
         // Create buttons for each location
         campLocations.forEach(location => {
-            const button = createElement('button', {
-                className: 'location-button',
-                textContent: location.name,
-                'data-location': location.name,
-                onClick: () => this.selectLocation(location)
+            const button = document.createElement('button');
+            button.className = 'location-button';
+            button.textContent = location.name;
+            button.setAttribute('data-location', location.name);
+            
+            // Add direct event listener instead of using createElement
+            button.addEventListener('click', () => {
+                console.log(`Location button clicked: ${location.name}`);
+                this.selectLocation(location);
             });
             
             locationButtonsContainer.appendChild(button);
