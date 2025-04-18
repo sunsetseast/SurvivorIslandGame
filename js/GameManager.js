@@ -99,7 +99,12 @@ class GameManager {
             case "camp":
                 this.energySystem.refillEnergy();
                 showScreen("camp-screen");
-                CampScreen.setup();
+                // Use global variable defined in js/screens/CampScreen.js
+                if (typeof CampScreen !== 'undefined') {
+                    CampScreen.setup();
+                } else {
+                    console.error("CampScreen is not defined");
+                }
                 break;
                 
             case "challenge":
