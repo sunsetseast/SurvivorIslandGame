@@ -5,6 +5,7 @@ window.CampScreen = {
      * Set up camp screen
      */
     setup() {
+        console.log("CampScreen setup() called");
         this.updateHeaderInfo();
         this.updateResourceDisplay();
         this.createLocationButtons();
@@ -13,33 +14,76 @@ window.CampScreen = {
         // Set up relationship button
         const relationshipsButton = document.getElementById('view-relationships-button');
         if (relationshipsButton) {
+            console.log("Setting up relationshipsButton event listener");
             relationshipsButton.addEventListener('click', () => {
                 this.viewRelationships();
             });
+        } else {
+            console.error("relationshipsButton not found");
         }
         
         // Set up alliance button
         const alliancesButton = document.getElementById('view-alliances-button');
         if (alliancesButton) {
+            console.log("Setting up alliancesButton event listener");
             alliancesButton.addEventListener('click', () => {
                 this.viewAlliances();
             });
+        } else {
+            console.error("alliancesButton not found");
         }
         
         // Set up next phase button
         const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
         if (nextPhaseButton) {
+            console.log("Setting up nextPhaseButton event listener");
             nextPhaseButton.addEventListener('click', () => {
                 this.proceedToNextPhase();
             });
+        } else {
+            console.error("nextPhaseButton not found");
         }
         
         // Set up back button
         const backButton = document.getElementById('back-to-locations-button');
         if (backButton) {
+            console.log("Setting up backButton event listener");
             backButton.addEventListener('click', () => {
                 this.hideLocationActions();
             });
+        } else {
+            console.error("backButton not found");
+        }
+        
+        // Set up personal health action buttons
+        const eatButton = document.getElementById('eat-button');
+        if (eatButton) {
+            console.log("Setting up eatButton event listener");
+            eatButton.addEventListener('click', () => {
+                this.performPersonalHealthAction('eat');
+            });
+        } else {
+            console.error("eatButton not found");
+        }
+        
+        const drinkButton = document.getElementById('drink-button');
+        if (drinkButton) {
+            console.log("Setting up drinkButton event listener");
+            drinkButton.addEventListener('click', () => {
+                this.performPersonalHealthAction('drink');
+            });
+        } else {
+            console.error("drinkButton not found");
+        }
+        
+        const personalRestButton = document.getElementById('personal-rest-button');
+        if (personalRestButton) {
+            console.log("Setting up personalRestButton event listener");
+            personalRestButton.addEventListener('click', () => {
+                this.performPersonalHealthAction('rest');
+            });
+        } else {
+            console.error("personalRestButton not found");
         }
         
         // Process random events
