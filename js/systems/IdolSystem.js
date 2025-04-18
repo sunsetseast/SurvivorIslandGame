@@ -35,7 +35,7 @@ class IdolSystem {
             hidingSpot: hidingSpots[Math.floor(Math.random() * hidingSpots.length)]
         };
         
-        console.log("Idol hidden in:", this.idolLocation);
+        console.log("Idol hidden in: " + JSON.stringify(this.idolLocation));
     }
     
     /**
@@ -43,7 +43,7 @@ class IdolSystem {
      */
     showIdolSearch() {
         console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-        console.log("Current idol location is:", this.idolLocation);
+        console.log("Current idol location is: " + JSON.stringify(this.idolLocation));
         
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
