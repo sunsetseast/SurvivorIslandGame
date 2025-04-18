@@ -97,10 +97,12 @@ class GameManager {
                 break;
                 
             case "camp":
+                console.log("Transitioning to camp phase");
                 this.energySystem.refillEnergy();
                 showScreen("camp-screen");
                 // Use global variable defined in js/screens/CampScreen.js
                 if (typeof CampScreen !== 'undefined') {
+                    console.log("CampScreen found, calling setup");
                     CampScreen.setup();
                 } else {
                     console.error("CampScreen is not defined");

@@ -1,6 +1,6 @@
 // Camp Screen
 // Make sure this is a global variable so it can be accessed from GameManager.js
-window.CampScreen = {
+window.CampScreen = CampScreen = {
     /**
      * Set up camp screen
      */
@@ -215,6 +215,7 @@ window.CampScreen = {
      * Create location buttons
      */
     createLocationButtons() {
+        console.log("createLocationButtons called");
         const locationButtonsContainer = document.getElementById('location-buttons');
         if (!locationButtonsContainer) {
             console.error("Location buttons container not found!");
@@ -224,10 +225,17 @@ window.CampScreen = {
         // Clear container
         clearChildren(locationButtonsContainer);
         
-        console.log("Creating location buttons for campLocations:", window.campLocations || campLocations || "Not defined!");
+        if (!window.campLocations) {
+            console.error("campLocations is not defined globally!");
+            return;
+        }
+        
+        console.log("Creating location buttons for campLocations:", window.campLocations);
+        console.log("Number of locations:", window.campLocations.length);
         
         // Create buttons for each location using window.campLocations (global) to ensure access
-        window.campLocations.forEach(location => {
+        window.campLocations.forEach((location, index) => {
+            console.log(`Creating button for location ${index}: ${location.name}`);
             const button = document.createElement('button');
             button.className = 'location-button';
             button.textContent = location.name;
