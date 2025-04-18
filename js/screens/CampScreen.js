@@ -1850,10 +1850,11 @@ window.CampScreen = {
         closeIcon.textContent = '×';
         closeIcon.style.fontSize = '24px';
         closeIcon.style.cursor = 'pointer';
-        closeIcon.onclick = () => {
+        closeIcon.addEventListener('click', () => {
+            console.log("Closing relationship panel");
             const panel = document.getElementById('relationship-panel');
             if (panel) panel.remove();
-        };
+        });
         
         header.appendChild(headerIcon);
         header.appendChild(headerText);
@@ -1938,10 +1939,11 @@ window.CampScreen = {
         const closeButton = document.createElement('button');
         closeButton.className = 'close-button';
         closeButton.textContent = 'Close';
-        closeButton.onclick = () => {
+        closeButton.addEventListener('click', () => {
+            console.log("Closing relationship panel via button");
             const panel = document.getElementById('relationship-panel');
             if (panel) panel.remove();
-        };
+        });
         
         actions.appendChild(closeButton);
         
@@ -2019,10 +2021,11 @@ window.CampScreen = {
         closeIcon.textContent = '×';
         closeIcon.style.fontSize = '24px';
         closeIcon.style.cursor = 'pointer';
-        closeIcon.onclick = () => {
+        closeIcon.addEventListener('click', () => {
+            console.log("Closing alliance panel");
             const panel = document.getElementById('alliance-panel');
             if (panel) panel.remove();
-        };
+        });
         
         header.appendChild(headerIcon);
         header.appendChild(headerText);
@@ -2185,14 +2188,15 @@ window.CampScreen = {
             const formAllianceButton = document.createElement('button');
             formAllianceButton.className = 'alliance-button';
             formAllianceButton.textContent = 'Form New Alliance';
-            formAllianceButton.onclick = () => {
+            formAllianceButton.addEventListener('click', () => {
+                console.log("Form alliance button clicked");
                 // Close alliance panel
                 const panel = document.getElementById('alliance-panel');
                 if (panel) panel.remove();
                 
                 // Show form alliance screen
                 this.showFormAllianceScreen(newPotentialAllies);
-            };
+            });
             
             actions.appendChild(formAllianceButton);
         }
@@ -2200,10 +2204,11 @@ window.CampScreen = {
         const closeButton = document.createElement('button');
         closeButton.className = 'close-button';
         closeButton.textContent = 'Close';
-        closeButton.onclick = () => {
+        closeButton.addEventListener('click', () => {
+            console.log("Closing alliance panel via button");
             const panel = document.getElementById('alliance-panel');
             if (panel) panel.remove();
-        };
+        });
         
         actions.appendChild(closeButton);
         
@@ -2284,10 +2289,11 @@ window.CampScreen = {
         closeIcon.textContent = '×';
         closeIcon.style.fontSize = '24px';
         closeIcon.style.cursor = 'pointer';
-        closeIcon.onclick = () => {
+        closeIcon.addEventListener('click', () => {
+            console.log("Closing form alliance panel");
             const panel = document.getElementById('form-alliance-panel');
             if (panel) panel.remove();
-        };
+        });
         
         header.appendChild(headerText);
         header.appendChild(closeIcon);
@@ -2379,13 +2385,14 @@ window.CampScreen = {
         const cancelButton = document.createElement('button');
         cancelButton.className = 'close-button';
         cancelButton.textContent = 'Cancel';
-        cancelButton.onclick = () => {
+        cancelButton.addEventListener('click', () => {
+            console.log("Cancel button clicked in form alliance panel");
             const panel = document.getElementById('form-alliance-panel');
             if (panel) panel.remove();
             
             // Show alliance panel again
             this.viewAlliances();
-        };
+        });
         
         actions.appendChild(cancelButton);
         
