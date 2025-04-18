@@ -238,10 +238,15 @@ window.CampScreen = {
             clearChildren(actionButtons);
             
             location.actions.forEach(action => {
-                const button = createElement('button', {
-                    className: 'action-button',
-                    textContent: `${action.name} (${action.energyCost} Energy)`,
-                    onClick: () => this.performAction(action)
+                // Create button with direct DOM methods
+                const button = document.createElement('button');
+                button.className = 'action-button';
+                button.textContent = `${action.name} (${action.energyCost} Energy)`;
+                
+                // Add direct event listener
+                button.addEventListener('click', () => {
+                    console.log(`Action button clicked: ${action.name}`);
+                    this.performAction(action);
                 });
                 
                 // Disable if not enough energy
@@ -249,14 +254,16 @@ window.CampScreen = {
                     button.disabled = true;
                 }
                 
-                const description = createElement('p', {
-                    className: 'action-description',
-                    textContent: action.description
-                });
+                // Create description
+                const description = document.createElement('p');
+                description.className = 'action-description';
+                description.textContent = action.description;
                 
-                const actionContainer = createElement('div', {
-                    className: 'action-container'
-                }, [button, description]);
+                // Create container and append elements
+                const actionContainer = document.createElement('div');
+                actionContainer.className = 'action-container';
+                actionContainer.appendChild(button);
+                actionContainer.appendChild(description);
                 
                 actionButtons.appendChild(actionContainer);
             });
