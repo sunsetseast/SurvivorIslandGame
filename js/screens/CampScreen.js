@@ -1810,120 +1810,403 @@ const CampScreen = {
      * View relationships
      */
     viewRelationships() {
-        // This would show a relationships panel
-        // For now, just show a dialogue with relationships
         const player = gameManager.getPlayerSurvivor();
         const tribe = gameManager.getPlayerTribe();
         
-        let text = "Your relationships:\n\n";
+        // Create relationship panel container
+        const relationshipPanel = document.createElement('div');
+        relationshipPanel.className = 'social-panel';
+        relationshipPanel.id = 'relationship-panel';
         
-        tribe.members.forEach(member => {
-            if (member !== player) {
-                const relationship = gameManager.relationshipSystem.getRelationship(player, member);
-                const description = gameManager.relationshipSystem.getRelationshipDescription(player, member);
-                text += `${member.name}: ${relationship} (${description})\n`;
-            }
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'social-panel-header';
+        
+        const headerIcon = document.createElement('span');
+        headerIcon.className = 'icon';
+        headerIcon.textContent = 'R';
+        
+        const headerText = document.createElement('span');
+        headerText.textContent = 'Your Relationships';
+        
+        const closeIcon = document.createElement('span');
+        closeIcon.textContent = '×';
+        closeIcon.style.fontSize = '24px';
+        closeIcon.style.cursor = 'pointer';
+        closeIcon.onclick = () => {
+            const panel = document.getElementById('relationship-panel');
+            if (panel) panel.remove();
+        };
+        
+        header.appendChild(headerIcon);
+        header.appendChild(headerText);
+        header.appendChild(closeIcon);
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'social-panel-content';
+        
+        // Create relationship list
+        const relationshipList = document.createElement('ul');
+        relationshipList.className = 'relationship-list';
+        
+        // Sort tribe members by relationship strength (descending)
+        const sortedMembers = [...tribe.members]
+            .filter(member => member !== player)
+            .sort((a, b) => {
+                const relA = gameManager.relationshipSystem.getRelationship(player, a);
+                const relB = gameManager.relationshipSystem.getRelationship(player, b);
+                return relB - relA;
+            });
+        
+        // Add each tribe member to the list
+        sortedMembers.forEach(member => {
+            const relationshipValue = gameManager.relationshipSystem.getRelationship(player, member);
+            const description = gameManager.relationshipSystem.getRelationshipDescription(player, member);
+            
+            // Create list item
+            const item = document.createElement('li');
+            item.className = 'relationship-item';
+            
+            // Create avatar
+            const avatar = document.createElement('div');
+            avatar.className = 'relationship-avatar';
+            avatar.textContent = member.name.charAt(0);
+            avatar.style.backgroundColor = this.getRelationshipColor(relationshipValue, 0.2);
+            avatar.style.color = this.getRelationshipColor(relationshipValue, 1);
+            
+            // Create details
+            const details = document.createElement('div');
+            details.className = 'relationship-details';
+            
+            const name = document.createElement('div');
+            name.className = 'relationship-name';
+            name.textContent = member.name;
+            
+            // Create relationship bar
+            const bar = document.createElement('div');
+            bar.className = 'relationship-bar';
+            
+            const fill = document.createElement('div');
+            fill.className = 'relationship-fill';
+            fill.style.width = `${relationshipValue}%`;
+            fill.style.backgroundColor = this.getRelationshipColor(relationshipValue, 1);
+            
+            bar.appendChild(fill);
+            
+            // Create relationship level text
+            const level = document.createElement('div');
+            level.className = `relationship-level ${this.getRelationshipTextClass(relationshipValue)}`;
+            level.textContent = `${relationshipValue}/100 - ${description}`;
+            
+            // Assemble details
+            details.appendChild(name);
+            details.appendChild(bar);
+            details.appendChild(level);
+            
+            // Assemble item
+            item.appendChild(avatar);
+            item.appendChild(details);
+            
+            // Add to list
+            relationshipList.appendChild(item);
         });
         
-        gameManager.dialogueSystem.showDialogue(
-            text,
-            ["Close"],
-            () => gameManager.dialogueSystem.hideDialogue()
-        );
+        content.appendChild(relationshipList);
+        
+        // Create actions
+        const actions = document.createElement('div');
+        actions.className = 'social-panel-actions';
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'close-button';
+        closeButton.textContent = 'Close';
+        closeButton.onclick = () => {
+            const panel = document.getElementById('relationship-panel');
+            if (panel) panel.remove();
+        };
+        
+        actions.appendChild(closeButton);
+        
+        // Assemble panel
+        relationshipPanel.appendChild(header);
+        relationshipPanel.appendChild(content);
+        relationshipPanel.appendChild(actions);
+        
+        // Add to document
+        document.body.appendChild(relationshipPanel);
+        
+        // Position panel in the center
+        relationshipPanel.style.position = 'fixed';
+        relationshipPanel.style.top = '50%';
+        relationshipPanel.style.left = '50%';
+        relationshipPanel.style.transform = 'translate(-50%, -50%)';
+        relationshipPanel.style.zIndex = '1000';
+        relationshipPanel.style.maxHeight = '80vh';
+        relationshipPanel.style.width = '90%';
+        relationshipPanel.style.maxWidth = '500px';
+    },
+    
+    /**
+     * Get color for relationship value
+     * @param {number} value - Relationship value (0-100)
+     * @param {number} alpha - Color opacity (0-1)
+     * @returns {string} - CSS color string
+     */
+    getRelationshipColor(value, alpha) {
+        if (value < 20) return `rgba(239, 68, 68, ${alpha})`; // red
+        if (value < 40) return `rgba(245, 158, 11, ${alpha})`; // amber
+        if (value < 60) return `rgba(100, 116, 139, ${alpha})`; // slate
+        if (value < 80) return `rgba(16, 185, 129, ${alpha})`; // emerald
+        return `rgba(59, 130, 246, ${alpha})`; // blue
+    },
+    
+    /**
+     * Get text class for relationship value
+     * @param {number} value - Relationship value (0-100)
+     * @returns {string} - CSS class name
+     */
+    getRelationshipTextClass(value) {
+        if (value < 20) return 'text-danger';
+        if (value < 40) return 'text-warning';
+        if (value < 60) return 'text-neutral';
+        if (value < 80) return 'text-good';
+        return 'text-excellent';
     },
     
     /**
      * View alliances
      */
     viewAlliances() {
-        // This would show an alliances panel
-        // For now, just show a dialogue with alliances
         const player = gameManager.getPlayerSurvivor();
         const alliances = gameManager.allianceSystem.getSurvivorAlliances(player);
         
-        let text = "";
+        // Create alliance panel container
+        const alliancePanel = document.createElement('div');
+        alliancePanel.className = 'social-panel';
+        alliancePanel.id = 'alliance-panel';
         
-        if (alliances.length === 0) {
-            text = "You are not currently in any alliances.\n\n";
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'social-panel-header';
+        header.style.backgroundColor = '#2d8a50'; // Green for alliances
+        
+        const headerIcon = document.createElement('span');
+        headerIcon.className = 'icon';
+        headerIcon.textContent = 'A';
+        
+        const headerText = document.createElement('span');
+        headerText.textContent = 'Your Alliances';
+        
+        const closeIcon = document.createElement('span');
+        closeIcon.textContent = '×';
+        closeIcon.style.fontSize = '24px';
+        closeIcon.style.cursor = 'pointer';
+        closeIcon.onclick = () => {
+            const panel = document.getElementById('alliance-panel');
+            if (panel) panel.remove();
+        };
+        
+        header.appendChild(headerIcon);
+        header.appendChild(headerText);
+        header.appendChild(closeIcon);
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'social-panel-content';
+        
+        // Get potential allies
+        const potentialAllies = gameManager.allianceSystem.suggestPotentialAllies(player);
+        const existingAllies = new Set();
+        
+        if (alliances.length > 0) {
+            // Create alliance list
+            const allianceList = document.createElement('div');
+            allianceList.className = 'alliance-list';
             
-            // Suggest potential allies
-            const potentialAllies = gameManager.allianceSystem.suggestPotentialAllies(player);
-            
-            if (potentialAllies.length > 0) {
-                text += "Potential allies:\n";
-                potentialAllies.forEach(ally => {
-                    const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
-                    text += `${ally.name}: ${relationship}\n`;
-                });
-                
-                // Since there are potential allies, offer to form an alliance
-                gameManager.dialogueSystem.showDialogue(
-                    text,
-                    ["Form an alliance", "Close"],
-                    (choice) => {
-                        if (choice === 0) {
-                            this.showFormAllianceScreen(potentialAllies);
-                        } else {
-                            gameManager.dialogueSystem.hideDialogue();
-                        }
-                    }
-                );
-                return;
-            } else {
-                text += "You need to improve your relationships before you can form alliances.";
-            }
-        } else {
-            text = "Your alliances:\n\n";
-            
+            // Add each alliance
             alliances.forEach(alliance => {
-                text += `${alliance.name} (Strength: ${Math.round(alliance.strength)}):\n`;
-                alliance.members.forEach(member => {
-                    if (member !== player) {
-                        text += `- ${member.name}\n`;
-                    }
-                });
-                text += "\n";
-            });
-            
-            // Suggest potential allies that aren't in any alliance with the player
-            const existingAllies = new Set();
-            alliances.forEach(alliance => {
+                // Track existing allies
                 alliance.members.forEach(member => {
                     existingAllies.add(member.name);
                 });
-            });
-            
-            const potentialAllies = gameManager.allianceSystem.suggestPotentialAllies(player)
-                .filter(ally => !existingAllies.has(ally.name));
-            
-            if (potentialAllies.length > 0) {
-                text += "\nPotential new allies:\n";
-                potentialAllies.forEach(ally => {
-                    const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
-                    text += `${ally.name}: ${relationship}\n`;
+                
+                // Create alliance item
+                const allianceItem = document.createElement('div');
+                allianceItem.className = 'alliance-item';
+                
+                // Alliance header with name and strength
+                const allianceHeader = document.createElement('div');
+                allianceHeader.className = 'alliance-header';
+                
+                const allianceName = document.createElement('div');
+                allianceName.className = 'alliance-name';
+                allianceName.textContent = alliance.name;
+                
+                const allianceStrength = document.createElement('div');
+                allianceStrength.className = 'alliance-strength';
+                
+                let strengthText = "";
+                const strengthValue = Math.round(alliance.strength);
+                
+                if (strengthValue > 80) strengthText = "Very Strong";
+                else if (strengthValue > 60) strengthText = "Strong";
+                else if (strengthValue > 40) strengthText = "Moderate";
+                else strengthText = "Weak";
+                
+                allianceStrength.textContent = `${strengthText} (${strengthValue})`;
+                
+                allianceHeader.appendChild(allianceName);
+                allianceHeader.appendChild(allianceStrength);
+                
+                // Alliance members
+                const allianceMembers = document.createElement('div');
+                allianceMembers.className = 'alliance-members';
+                
+                alliance.members.forEach(member => {
+                    const memberItem = document.createElement('div');
+                    memberItem.className = 'alliance-member';
+                    
+                    const memberAvatar = document.createElement('div');
+                    memberAvatar.className = 'alliance-member-avatar';
+                    memberAvatar.textContent = member.name.charAt(0);
+                    
+                    const memberName = document.createElement('div');
+                    memberName.className = 'alliance-member-name';
+                    memberName.textContent = member.name + (member === player ? ' (You)' : '');
+                    
+                    memberItem.appendChild(memberAvatar);
+                    memberItem.appendChild(memberName);
+                    
+                    allianceMembers.appendChild(memberItem);
                 });
                 
-                // Offer to form a new alliance
-                gameManager.dialogueSystem.showDialogue(
-                    text,
-                    ["Form a new alliance", "Close"],
-                    (choice) => {
-                        if (choice === 0) {
-                            this.showFormAllianceScreen(potentialAllies);
-                        } else {
-                            gameManager.dialogueSystem.hideDialogue();
-                        }
-                    }
-                );
-                return;
-            }
+                // Add to alliance item
+                allianceItem.appendChild(allianceHeader);
+                allianceItem.appendChild(allianceMembers);
+                
+                // Add to alliance list
+                allianceList.appendChild(allianceItem);
+            });
+            
+            content.appendChild(allianceList);
+        } else {
+            // No alliances message
+            const noAlliances = document.createElement('div');
+            noAlliances.className = 'no-alliances';
+            noAlliances.textContent = "You are not currently in any alliances.";
+            content.appendChild(noAlliances);
         }
         
-        gameManager.dialogueSystem.showDialogue(
-            text,
-            ["Close"],
-            () => gameManager.dialogueSystem.hideDialogue()
+        // Filter potential allies that aren't already in an alliance with the player
+        const newPotentialAllies = potentialAllies.filter(ally => 
+            !existingAllies.has(ally.name) && ally !== player
         );
+        
+        // Add potential allies section if there are any
+        if (newPotentialAllies.length > 0) {
+            const potentialAlliesSection = document.createElement('div');
+            potentialAlliesSection.className = 'potential-allies';
+            
+            const potentialAlliesHeader = document.createElement('div');
+            potentialAlliesHeader.className = 'potential-allies-header';
+            potentialAlliesHeader.textContent = 'Potential Allies';
+            
+            potentialAlliesSection.appendChild(potentialAlliesHeader);
+            
+            // Add each potential ally
+            newPotentialAllies.forEach(ally => {
+                const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
+                
+                const potentialAlly = document.createElement('div');
+                potentialAlly.className = 'potential-ally';
+                
+                const allyInfo = document.createElement('div');
+                allyInfo.className = 'potential-ally-info';
+                
+                const allyAvatar = document.createElement('div');
+                allyAvatar.className = 'potential-ally-avatar';
+                allyAvatar.textContent = ally.name.charAt(0);
+                
+                const allyName = document.createElement('div');
+                allyName.className = 'potential-ally-name';
+                allyName.textContent = ally.name;
+                
+                allyInfo.appendChild(allyAvatar);
+                allyInfo.appendChild(allyName);
+                
+                const allyRelationship = document.createElement('div');
+                allyRelationship.className = 'potential-ally-relationship';
+                allyRelationship.textContent = `${relationship}/100`;
+                
+                potentialAlly.appendChild(allyInfo);
+                potentialAlly.appendChild(allyRelationship);
+                
+                // Make the whole potential ally row clickable
+                potentialAlly.style.cursor = 'pointer';
+                potentialAlly.onclick = () => {
+                    // Close alliance panel
+                    const panel = document.getElementById('alliance-panel');
+                    if (panel) panel.remove();
+                    
+                    // Show form alliance dialogue with this specific ally
+                    this.formAllianceWith(ally);
+                };
+                
+                potentialAlliesSection.appendChild(potentialAlly);
+            });
+            
+            content.appendChild(potentialAlliesSection);
+        }
+        
+        // Create actions
+        const actions = document.createElement('div');
+        actions.className = 'social-panel-actions';
+        
+        // Add form alliance button if there are potential allies
+        if (newPotentialAllies.length > 0) {
+            const formAllianceButton = document.createElement('button');
+            formAllianceButton.className = 'alliance-button';
+            formAllianceButton.textContent = 'Form New Alliance';
+            formAllianceButton.onclick = () => {
+                // Close alliance panel
+                const panel = document.getElementById('alliance-panel');
+                if (panel) panel.remove();
+                
+                // Show form alliance screen
+                this.showFormAllianceScreen(newPotentialAllies);
+            };
+            
+            actions.appendChild(formAllianceButton);
+        }
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'close-button';
+        closeButton.textContent = 'Close';
+        closeButton.onclick = () => {
+            const panel = document.getElementById('alliance-panel');
+            if (panel) panel.remove();
+        };
+        
+        actions.appendChild(closeButton);
+        
+        // Assemble panel
+        alliancePanel.appendChild(header);
+        alliancePanel.appendChild(content);
+        alliancePanel.appendChild(actions);
+        
+        // Add to document
+        document.body.appendChild(alliancePanel);
+        
+        // Position panel in the center
+        alliancePanel.style.position = 'fixed';
+        alliancePanel.style.top = '50%';
+        alliancePanel.style.left = '50%';
+        alliancePanel.style.transform = 'translate(-50%, -50%)';
+        alliancePanel.style.zIndex = '1000';
+        alliancePanel.style.maxHeight = '80vh';
+        alliancePanel.style.width = '90%';
+        alliancePanel.style.maxWidth = '500px';
     },
     
     /**
@@ -1932,39 +2215,180 @@ const CampScreen = {
      */
     showFormAllianceScreen(potentialAllies) {
         if (potentialAllies.length === 0) {
-            gameManager.dialogueSystem.showDialogue(
-                "You don't have any potential allies with a high enough relationship score.",
-                ["Close"],
-                () => gameManager.dialogueSystem.hideDialogue()
-            );
+            // Display message if no potential allies
+            const messagePanel = document.createElement('div');
+            messagePanel.className = 'social-panel';
+            messagePanel.id = 'message-panel';
+            messagePanel.style.position = 'fixed';
+            messagePanel.style.top = '50%';
+            messagePanel.style.left = '50%';
+            messagePanel.style.transform = 'translate(-50%, -50%)';
+            messagePanel.style.zIndex = '1000';
+            messagePanel.style.maxWidth = '400px';
+            
+            const messageContent = document.createElement('div');
+            messageContent.style.padding = '30px 20px';
+            messageContent.style.textAlign = 'center';
+            messageContent.textContent = "You don't have any potential allies with a high enough relationship score.";
+            
+            const actionDiv = document.createElement('div');
+            actionDiv.className = 'social-panel-actions';
+            
+            const closeButton = document.createElement('button');
+            closeButton.className = 'close-button';
+            closeButton.textContent = 'Close';
+            closeButton.onclick = () => {
+                const panel = document.getElementById('message-panel');
+                if (panel) panel.remove();
+            };
+            
+            actionDiv.appendChild(closeButton);
+            messagePanel.appendChild(messageContent);
+            messagePanel.appendChild(actionDiv);
+            
+            document.body.appendChild(messagePanel);
             return;
         }
         
-        // Create choices for each potential ally
-        const choices = potentialAllies.map(ally => {
-            const relationship = gameManager.relationshipSystem.getRelationship(
-                gameManager.getPlayerSurvivor(), ally
-            );
-            return `${ally.name} (Relationship: ${relationship})`;
+        // Create form alliance panel
+        const formPanel = document.createElement('div');
+        formPanel.className = 'social-panel';
+        formPanel.id = 'form-alliance-panel';
+        
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'social-panel-header';
+        header.style.backgroundColor = '#2d8a50'; // Green for alliances
+        
+        const headerText = document.createElement('span');
+        headerText.textContent = 'Form New Alliance';
+        
+        const closeIcon = document.createElement('span');
+        closeIcon.textContent = '×';
+        closeIcon.style.fontSize = '24px';
+        closeIcon.style.cursor = 'pointer';
+        closeIcon.onclick = () => {
+            const panel = document.getElementById('form-alliance-panel');
+            if (panel) panel.remove();
+        };
+        
+        header.appendChild(headerText);
+        header.appendChild(closeIcon);
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'social-panel-content';
+        
+        // Create instruction text
+        const instruction = document.createElement('div');
+        instruction.style.padding = '15px 20px';
+        instruction.style.borderBottom = '1px solid #e2e8f0';
+        instruction.textContent = "Select a tribe member to form an alliance with:";
+        
+        content.appendChild(instruction);
+        
+        // Create potential allies list
+        const alliesList = document.createElement('div');
+        alliesList.style.padding = '10px 0';
+        
+        // Sort allies by relationship (highest first)
+        const sortedAllies = [...potentialAllies].sort((a, b) => {
+            const player = gameManager.getPlayerSurvivor();
+            const relA = gameManager.relationshipSystem.getRelationship(player, a);
+            const relB = gameManager.relationshipSystem.getRelationship(player, b);
+            return relB - relA;
         });
         
-        // Add a cancel option
-        choices.push("Cancel");
-        
-        gameManager.dialogueSystem.showDialogue(
-            "Who do you want to form an alliance with?",
-            choices,
-            (choice) => {
-                if (choice === choices.length - 1) {
-                    // Cancel was selected
-                    this.viewAlliances();
-                    return;
-                }
+        // Add each potential ally
+        sortedAllies.forEach(ally => {
+            const player = gameManager.getPlayerSurvivor();
+            const relationship = gameManager.relationshipSystem.getRelationship(player, ally);
+            
+            const allyItem = document.createElement('div');
+            allyItem.className = 'potential-ally';
+            allyItem.style.padding = '12px 20px';
+            allyItem.style.cursor = 'pointer';
+            allyItem.style.transition = 'background-color 0.2s';
+            
+            // Highlight on hover
+            allyItem.onmouseover = () => {
+                allyItem.style.backgroundColor = '#f0f9ff';
+            };
+            allyItem.onmouseout = () => {
+                allyItem.style.backgroundColor = '';
+            };
+            
+            const allyInfo = document.createElement('div');
+            allyInfo.className = 'potential-ally-info';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'alliance-member-avatar';
+            avatar.textContent = ally.name.charAt(0);
+            avatar.style.backgroundColor = this.getRelationshipColor(relationship, 0.2);
+            avatar.style.color = this.getRelationshipColor(relationship, 1);
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'alliance-member-name';
+            nameDiv.textContent = ally.name;
+            
+            allyInfo.appendChild(avatar);
+            allyInfo.appendChild(nameDiv);
+            
+            const relationshipDiv = document.createElement('div');
+            relationshipDiv.className = `relationship-level ${this.getRelationshipTextClass(relationship)}`;
+            relationshipDiv.textContent = `${relationship}/100`;
+            
+            allyItem.appendChild(allyInfo);
+            allyItem.appendChild(relationshipDiv);
+            
+            // Click handler
+            allyItem.onclick = () => {
+                const panel = document.getElementById('form-alliance-panel');
+                if (panel) panel.remove();
                 
-                const selectedAlly = potentialAllies[choice];
-                this.formAllianceWith(selectedAlly);
-            }
-        );
+                // Attempt to form alliance with the selected ally
+                this.formAllianceWith(ally);
+            };
+            
+            alliesList.appendChild(allyItem);
+        });
+        
+        content.appendChild(alliesList);
+        
+        // Create actions
+        const actions = document.createElement('div');
+        actions.className = 'social-panel-actions';
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'close-button';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = () => {
+            const panel = document.getElementById('form-alliance-panel');
+            if (panel) panel.remove();
+            
+            // Show alliance panel again
+            this.viewAlliances();
+        };
+        
+        actions.appendChild(cancelButton);
+        
+        // Assemble panel
+        formPanel.appendChild(header);
+        formPanel.appendChild(content);
+        formPanel.appendChild(actions);
+        
+        // Add to document
+        document.body.appendChild(formPanel);
+        
+        // Position panel in the center
+        formPanel.style.position = 'fixed';
+        formPanel.style.top = '50%';
+        formPanel.style.left = '50%';
+        formPanel.style.transform = 'translate(-50%, -50%)';
+        formPanel.style.zIndex = '1000';
+        formPanel.style.maxHeight = '80vh';
+        formPanel.style.width = '90%';
+        formPanel.style.maxWidth = '500px';
     },
     
     /**
@@ -1977,27 +2401,107 @@ const CampScreen = {
         // Create the alliance
         const alliance = gameManager.allianceSystem.createAllianceBetween(player, ally);
         
+        // Create result panel
+        const resultPanel = document.createElement('div');
+        resultPanel.className = 'social-panel';
+        resultPanel.id = 'alliance-result-panel';
+        
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'social-panel-header';
+        
+        const headerText = document.createElement('span');
+        headerText.textContent = alliance ? 'Alliance Formed' : 'Alliance Declined';
+        
+        const closeIcon = document.createElement('span');
+        closeIcon.textContent = '×';
+        closeIcon.style.fontSize = '24px';
+        closeIcon.style.cursor = 'pointer';
+        closeIcon.onclick = () => {
+            const panel = document.getElementById('alliance-result-panel');
+            if (panel) panel.remove();
+            
+            // Return to alliance view if needed
+            this.viewAlliances();
+        };
+        
+        header.appendChild(headerText);
+        header.appendChild(closeIcon);
+        
+        // Style header based on result
         if (alliance) {
-            gameManager.dialogueSystem.showDialogue(
-                `You've formed an alliance with ${ally.name}! You agree to work together and protect each other in the game.`,
-                ["Great!"],
-                () => {
-                    gameManager.dialogueSystem.hideDialogue();
-                    // Refresh alliances display
-                    this.viewAlliances();
-                }
-            );
+            header.style.backgroundColor = '#2d8a50'; // Green for success
         } else {
-            gameManager.dialogueSystem.showDialogue(
-                `${ally.name} is hesitant to form an alliance right now. Try improving your relationship first.`,
-                ["OK"],
-                () => {
-                    gameManager.dialogueSystem.hideDialogue();
-                    // Go back to alliances view
-                    this.viewAlliances();
-                }
-            );
+            header.style.backgroundColor = '#e45f56'; // Red for failure
         }
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'social-panel-content';
+        content.style.padding = '20px';
+        
+        // Create message
+        const message = document.createElement('div');
+        message.style.marginBottom = '15px';
+        message.style.fontSize = '1.1em';
+        
+        if (alliance) {
+            message.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🤝</div>
+                    <div style="font-weight: bold; font-size: 1.2em; margin-bottom: 5px;">Alliance Formed!</div>
+                </div>
+                <p>You've formed an alliance with ${ally.name}!</p>
+                <p>You agree to work together, share information, and protect each other in tribal councils.</p>
+                <p>Remember that alliances require trust and maintenance. Continue building your relationship to strengthen this bond.</p>
+            `;
+        } else {
+            message.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🤔</div>
+                    <div style="font-weight: bold; font-size: 1.2em; margin-bottom: 5px;">Alliance Declined</div>
+                </div>
+                <p>${ally.name} is hesitant to form an alliance with you right now.</p>
+                <p>Try spending more time together and building your relationship. A stronger relationship will make them more likely to trust you with an alliance.</p>
+            `;
+        }
+        
+        content.appendChild(message);
+        
+        // Create actions
+        const actions = document.createElement('div');
+        actions.className = 'social-panel-actions';
+        
+        const viewButton = document.createElement('button');
+        viewButton.className = alliance ? 'alliance-button' : 'close-button';
+        viewButton.textContent = alliance ? 'View Alliance' : 'Close';
+        viewButton.onclick = () => {
+            const panel = document.getElementById('alliance-result-panel');
+            if (panel) panel.remove();
+            
+            // Go back to alliances view
+            this.viewAlliances();
+        };
+        
+        actions.appendChild(viewButton);
+        
+        // Assemble panel
+        resultPanel.appendChild(header);
+        resultPanel.appendChild(content);
+        resultPanel.appendChild(actions);
+        
+        // Add to document
+        document.body.appendChild(resultPanel);
+        
+        // Position panel in the center
+        resultPanel.style.position = 'fixed';
+        resultPanel.style.top = '50%';
+        resultPanel.style.left = '50%';
+        resultPanel.style.transform = 'translate(-50%, -50%)';
+        resultPanel.style.zIndex = '1000';
+        resultPanel.style.maxHeight = '80vh';
+        resultPanel.style.width = '90%';
+        resultPanel.style.maxWidth = '500px';
     },
     
     /**
