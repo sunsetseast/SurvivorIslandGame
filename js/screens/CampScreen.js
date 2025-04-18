@@ -2164,14 +2164,15 @@ window.CampScreen = {
                 
                 // Make the whole potential ally row clickable
                 potentialAlly.style.cursor = 'pointer';
-                potentialAlly.onclick = () => {
+                potentialAlly.addEventListener('click', () => {
+                    console.log("Potential ally clicked:", ally.name);
                     // Close alliance panel
                     const panel = document.getElementById('alliance-panel');
                     if (panel) panel.remove();
                     
                     // Show form alliance dialogue with this specific ally
                     this.formAllianceWith(ally);
-                };
+                });
                 
                 potentialAlliesSection.appendChild(potentialAlly);
             });
@@ -2259,10 +2260,11 @@ window.CampScreen = {
             const closeButton = document.createElement('button');
             closeButton.className = 'close-button';
             closeButton.textContent = 'Close';
-            closeButton.onclick = () => {
+            closeButton.addEventListener('click', () => {
+                console.log("Close button clicked in message panel");
                 const panel = document.getElementById('message-panel');
                 if (panel) panel.remove();
-            };
+            });
             
             actionDiv.appendChild(closeButton);
             messagePanel.appendChild(messageContent);
@@ -2334,12 +2336,12 @@ window.CampScreen = {
             allyItem.style.transition = 'background-color 0.2s';
             
             // Highlight on hover
-            allyItem.onmouseover = () => {
+            allyItem.addEventListener('mouseover', () => {
                 allyItem.style.backgroundColor = '#f0f9ff';
-            };
-            allyItem.onmouseout = () => {
+            });
+            allyItem.addEventListener('mouseout', () => {
                 allyItem.style.backgroundColor = '';
-            };
+            });
             
             const allyInfo = document.createElement('div');
             allyInfo.className = 'potential-ally-info';
@@ -2365,13 +2367,14 @@ window.CampScreen = {
             allyItem.appendChild(relationshipDiv);
             
             // Click handler
-            allyItem.onclick = () => {
+            allyItem.addEventListener('click', () => {
+                console.log("Ally item clicked:", ally.name);
                 const panel = document.getElementById('form-alliance-panel');
                 if (panel) panel.remove();
                 
                 // Attempt to form alliance with the selected ally
                 this.formAllianceWith(ally);
-            };
+            });
             
             alliesList.appendChild(allyItem);
         });
@@ -2441,13 +2444,14 @@ window.CampScreen = {
         closeIcon.textContent = '×';
         closeIcon.style.fontSize = '24px';
         closeIcon.style.cursor = 'pointer';
-        closeIcon.onclick = () => {
+        closeIcon.addEventListener('click', () => {
+            console.log("Closing alliance result panel");
             const panel = document.getElementById('alliance-result-panel');
             if (panel) panel.remove();
             
             // Return to alliance view if needed
             this.viewAlliances();
-        };
+        });
         
         header.appendChild(headerText);
         header.appendChild(closeIcon);
@@ -2499,13 +2503,14 @@ window.CampScreen = {
         const viewButton = document.createElement('button');
         viewButton.className = alliance ? 'alliance-button' : 'close-button';
         viewButton.textContent = alliance ? 'View Alliance' : 'Close';
-        viewButton.onclick = () => {
+        viewButton.addEventListener('click', () => {
+            console.log("View button clicked in alliance result panel");
             const panel = document.getElementById('alliance-result-panel');
             if (panel) panel.remove();
             
             // Go back to alliances view
             this.viewAlliances();
-        };
+        });
         
         actions.appendChild(viewButton);
         
