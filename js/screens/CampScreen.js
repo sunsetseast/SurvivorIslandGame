@@ -1359,7 +1359,7 @@ window.CampScreen = {
     getRandomLifeEvent() {
         const events = ["got married", "changed careers", "moved to a new city", "finished grad school", "lost a close family member"];
         return events[Math.floor(Math.random() * events.length)];
-    },,
+    },
     
     /**
      * Rest action
