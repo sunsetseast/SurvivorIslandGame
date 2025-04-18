@@ -537,6 +537,28 @@ const TribalCouncilScreen = {
      * Continue after vote
      */
     continueAfterVote() {
+        // Process elimination in the game system
         gameManager.tribalCouncilSystem.processElimination();
+        
+        // Clear all vote-related UI elements for next tribal council
+        const voteResultsContainer = document.getElementById('vote-results-container');
+        if (voteResultsContainer) {
+            voteResultsContainer.innerHTML = '';
+        }
+        
+        // Clear elimination text
+        const eliminationText = document.getElementById('elimination-text');
+        if (eliminationText) {
+            eliminationText.textContent = '';
+        }
+        
+        // Hide continue button
+        const continueButton = document.getElementById('continue-after-vote-button');
+        if (continueButton) {
+            continueButton.style.display = 'none';
+        }
+        
+        // Reset tribal council system internal state
+        gameManager.tribalCouncilSystem.initialize();
     }
 };

@@ -513,10 +513,8 @@ class ChallengeSystem {
         const playerTribe = this.gameManager.getPlayerTribe();
         const allTribes = this.gameManager.getTribes();
         
-        // Find all the winning tribes (tribes whose members have immunity)
-        const winningTribes = allTribes.filter(tribe => 
-            tribe.members.length > 0 && tribe.members[0].hasImmunity
-        );
+        // Find all the winning tribes (tribes whose isImmune flag is true)
+        const winningTribes = allTribes.filter(tribe => tribe.isImmune === true);
         
         // Set tribeWinner for backward compatibility 
         if (playerWon) {
@@ -528,16 +526,17 @@ class ChallengeSystem {
         // Clear and rebuild immunePlayers list
         this.immunePlayers = [];
         allTribes.forEach(tribe => {
-            tribe.members.forEach(member => {
-                if (member.hasImmunity) {
+            // For each tribe with immunity, add all members to immunePlayers
+            if (tribe.isImmune) {
+                tribe.members.forEach(member => {
                     this.immunePlayers.push(member);
-                }
-            });
+                });
+            }
         });
         
         // Apply resource depletion penalty to losing tribe(s)
         allTribes.forEach(tribe => {
-            if (!winningTribes.includes(tribe)) {
+            if (!tribe.isImmune) {
                 // Tribe lost challenge - deplete resources
                 this.depleteTribalResources(tribe);
             }
@@ -572,6 +571,9 @@ class ChallengeSystem {
             
             challengeDescription.textContent = resultText;
         }
+        
+        // Update game state
+        this.gameManager.gameSequence = "afterChallenge";
     }
     
     /**
