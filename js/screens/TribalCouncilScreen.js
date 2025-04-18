@@ -1,5 +1,5 @@
 // Tribal Council Screen
-const TribalCouncilScreen = {
+window.TribalCouncilScreen = {
     /**
      * Set up tribal council screen
      */

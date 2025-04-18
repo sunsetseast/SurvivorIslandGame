@@ -1,5 +1,5 @@
 // Challenge Screen
-const ChallengeScreen = {
+window.ChallengeScreen = {
     /**
      * Set up challenge screen
      */

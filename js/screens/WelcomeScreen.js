@@ -1,5 +1,5 @@
 // Welcome Screen
-const WelcomeScreen = {
+window.WelcomeScreen = {
     /**
      * Set up welcome screen
      */

@@ -1,5 +1,5 @@
 // Character Selection Screen
-const CharacterSelectionScreen = {
+window.CharacterSelectionScreen = {
     /**
      * Set up character selection screen
      */

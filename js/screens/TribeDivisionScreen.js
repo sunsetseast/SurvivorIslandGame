@@ -1,5 +1,5 @@
 // Tribe Division Screen
-const TribeDivisionScreen = {
+window.TribeDivisionScreen = {
     /**
      * Set up tribe division screen
      */
