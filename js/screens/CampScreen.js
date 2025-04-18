@@ -224,10 +224,10 @@ window.CampScreen = {
         // Clear container
         clearChildren(locationButtonsContainer);
         
-        console.log("Creating location buttons for campLocations:", campLocations);
+        console.log("Creating location buttons for campLocations:", window.campLocations || campLocations || "Not defined!");
         
-        // Create buttons for each location
-        campLocations.forEach(location => {
+        // Create buttons for each location using window.campLocations (global) to ensure access
+        window.campLocations.forEach(location => {
             const button = document.createElement('button');
             button.className = 'location-button';
             button.textContent = location.name;

@@ -246,7 +246,7 @@ const challengeDatabase = [
 ];
 
 // Camp Locations
-const campLocations = [
+window.campLocations = [
     {
         name: "Beach",
         description: "The sandy shore around your camp where you can collect water and fish.",
