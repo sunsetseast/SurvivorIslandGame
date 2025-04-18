@@ -48,8 +48,10 @@ class TribalCouncilSystem {
         if (this.gameManager.getGamePhase() === "preMerge") {
             const playerTribe = this.gameManager.getPlayerTribe();
             
-            // Check if player's tribe won immunity
-            const playerTribeHasImmunity = playerTribe.members.length > 0 && playerTribe.members.some(member => member.hasImmunity);
+            // Check if player's tribe won immunity - use isImmune flag first, then fallback to checking members
+            const playerTribeHasImmunity = playerTribe.isImmune === true ||
+                                          (playerTribe.members.length > 0 && 
+                                           playerTribe.members.some(member => member.hasImmunity));
             
             if (playerTribeHasImmunity) {
                 // Player's tribe won immunity, the other tribe goes to tribal
@@ -107,39 +109,64 @@ class TribalCouncilSystem {
      * (Happens when player's tribe wins immunity)
      */
     simulateNPCTribalCouncil() {
-        if (!this.currentTribe) return;
+        if (!this.currentTribe) {
+            console.error("Cannot simulate tribal council - no current tribe");
+            return;
+        }
+        
+        console.log(`Starting NPC tribal council for ${this.currentTribe.tribeName}`);
+        console.log(`Tribe members: ${this.currentTribe.members.map(m => m.name).join(', ')}`);
         
         // Check if any NPCs have immunity
         this.immunePlayers = this.currentTribe.members.filter(member => member.hasImmunity);
+        console.log(`Immune players: ${this.immunePlayers.map(m => m.name).join(', ')}`);
         
         // Have all NPCs vote
         this.generateNPCVotes();
+        console.log("NPC votes generated:", this.votes);
         
         // Count votes to determine elimination
         const voteResults = this.countVotes();
+        console.log("Vote results:", voteResults);
         
         // If there's a tie, handle it automatically
         if (voteResults.isTied) {
+            console.log("Tie detected between: " + voteResults.tiedPlayers.join(", "));
             // Process revote
             const revoteResults = this.handleTieVote(voteResults.tiedPlayers);
             
             // If still tied, go to rock draw
             if (revoteResults.stillTied) {
+                console.log("Still tied after revote, going to rock draw");
                 this.drawRocks(revoteResults.tiedPlayers);
             }
         }
         
         // Process elimination
         if (this.eliminatedSurvivor) {
+            console.log(`Eliminated player from ${this.currentTribe.tribeName}: ${this.eliminatedSurvivor.name}`);
+            
+            // Store the eliminated player for reference
+            const eliminatedPlayer = this.eliminatedSurvivor;
+            
             // Show a dialogue revealing who was eliminated from the other tribe
             this.gameManager.dialogueSystem.showDialogue(
-                `At tribal council, the ${this.currentTribe.tribeName} tribe has voted out ${this.eliminatedSurvivor.name}.`,
+                `At tribal council, the ${this.currentTribe.tribeName} tribe has voted out ${eliminatedPlayer.name}.`,
                 ["Continue"],
                 () => {
+                    console.log(`Continuing after showing ${eliminatedPlayer.name} was voted out`);
                     this.gameManager.dialogueSystem.hideDialogue();
-                    this.gameManager.eliminateSurvivor(this.eliminatedSurvivor);
+                    
+                    // Eliminate the survivor
+                    this.gameManager.eliminateSurvivor(eliminatedPlayer);
+                    console.log(`${eliminatedPlayer.name} has been eliminated from the game`);
+                    
+                    // Force an update to the menu
+                    updateGameMenu();
                 }
             );
+        } else {
+            console.error("No player was eliminated in the NPC tribal council!");
         }
     }
     

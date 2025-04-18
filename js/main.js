@@ -223,8 +223,11 @@ function updateGameMenu() {
         if (allTribes && allTribes.length > 0) {
             // Show player's tribe first
             if (currentTribe) {
-                // Check if player tribe has immunity
-                const hasTribalImmunity = currentTribe.members.length > 0 && currentTribe.members[0].hasImmunity;
+                // Check if player tribe has immunity (use isImmune flag or fallback to member check)
+                const hasTribalImmunity = currentTribe.isImmune === true || 
+                                        (currentTribe.members.length > 0 && 
+                                         currentTribe.members.some(m => m.hasImmunity) && 
+                                         gameManager.getGamePhase() === "preMerge");
                 
                 tribeHTML += `
                     <div class="menu-tribe">
@@ -248,8 +251,11 @@ function updateGameMenu() {
             // Show other tribes
             allTribes.forEach(tribe => {
                 if (tribe !== currentTribe) {
-                    // Check if this tribe has immunity
-                    const hasTribalImmunity = tribe.members.length > 0 && tribe.members[0].hasImmunity;
+                    // Check if this tribe has immunity (use isImmune flag or fallback to member check)
+                    const hasTribalImmunity = tribe.isImmune === true || 
+                                             (tribe.members.length > 0 && 
+                                              tribe.members.some(m => m.hasImmunity) && 
+                                              gameManager.getGamePhase() === "preMerge");
                     
                     tribeHTML += `
                         <div class="menu-tribe" style="margin-top: 15px;">
