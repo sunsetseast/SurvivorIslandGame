@@ -107,13 +107,18 @@ class GameManager {
                 console.log("Transitioning to camp phase");
                 this.energySystem.refillEnergy();
                 showScreen("camp-screen");
-                // Use global variable defined in js/screens/CampScreen.js
-                if (typeof CampScreen !== 'undefined') {
-                    console.log("CampScreen found, calling setup");
-                    CampScreen.setup();
-                } else {
-                    console.error("CampScreen is not defined");
-                }
+                
+                // Make sure CampScreen is defined and call its setup method
+                // Use timeout to ensure DOM is ready before calling setup
+                setTimeout(() => {
+                    if (typeof CampScreen !== 'undefined') {
+                        console.log("CampScreen found, calling setup");
+                        // Call with explicit window object to ensure scope is correct
+                        window.CampScreen.setup();
+                    } else {
+                        console.error("CampScreen is not defined");
+                    }
+                }, 50);
                 break;
                 
             case "challenge":

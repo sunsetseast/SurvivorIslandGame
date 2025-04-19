@@ -14,90 +14,85 @@ window.CampScreen = {
     },
     
     /**
-     * Set up button event listeners
+     * Set up button event listeners - using direct onclick property for better reliability
      */
     setupButtonListeners() {
         console.log("Setting up camp screen button listeners");
         
-        // Remove any existing event listeners to prevent duplicates
-        const oldRelationshipsButton = document.getElementById('view-relationships-button');
-        const oldAlliancesButton = document.getElementById('view-alliances-button');
-        const oldNextPhaseButton = document.getElementById('proceed-to-challenge-button');
-        
-        if (oldRelationshipsButton) {
-            const newRelationshipsButton = oldRelationshipsButton.cloneNode(true);
-            oldRelationshipsButton.parentNode.replaceChild(newRelationshipsButton, oldRelationshipsButton);
-            console.log("Setting up relationshipsButton event listener");
-            newRelationshipsButton.addEventListener('click', () => {
+        // Relationship button
+        const relationshipsButton = document.getElementById('view-relationships-button');
+        if (relationshipsButton) {
+            console.log("Setting up relationshipsButton with direct onclick");
+            relationshipsButton.onclick = () => {
                 console.log("Relationships button clicked");
                 this.viewRelationships();
-            });
+            };
         } else {
             console.error("relationshipsButton not found");
         }
         
-        if (oldAlliancesButton) {
-            const newAlliancesButton = oldAlliancesButton.cloneNode(true);
-            oldAlliancesButton.parentNode.replaceChild(newAlliancesButton, oldAlliancesButton);
-            console.log("Setting up alliancesButton event listener");
-            newAlliancesButton.addEventListener('click', () => {
+        // Alliances button
+        const alliancesButton = document.getElementById('view-alliances-button');
+        if (alliancesButton) {
+            console.log("Setting up alliancesButton with direct onclick");
+            alliancesButton.onclick = () => {
                 console.log("Alliances button clicked");
                 this.viewAlliances();
-            });
+            };
         } else {
             console.error("alliancesButton not found");
         }
         
-        if (oldNextPhaseButton) {
-            const newNextPhaseButton = oldNextPhaseButton.cloneNode(true);
-            oldNextPhaseButton.parentNode.replaceChild(newNextPhaseButton, oldNextPhaseButton);
-            console.log("Setting up nextPhaseButton event listener");
-            newNextPhaseButton.addEventListener('click', () => {
+        // Next Phase button
+        const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
+        if (nextPhaseButton) {
+            console.log("Setting up nextPhaseButton with direct onclick");
+            nextPhaseButton.onclick = () => {
                 console.log("Next Phase button clicked");
                 this.proceedToNextPhase();
-            });
+            };
         } else {
             console.error("nextPhaseButton not found");
         }
         
-        // Set up back button
+        // Back button
         const backButton = document.getElementById('back-to-locations-button');
         if (backButton) {
-            console.log("Setting up backButton event listener");
-            backButton.addEventListener('click', () => {
+            console.log("Setting up backButton with direct onclick");
+            backButton.onclick = () => {
                 this.hideLocationActions();
-            });
+            };
         } else {
             console.error("backButton not found");
         }
         
-        // Set up personal health action buttons
+        // Personal health action buttons
         const eatButton = document.getElementById('eat-button');
         if (eatButton) {
-            console.log("Setting up eatButton event listener");
-            eatButton.addEventListener('click', () => {
+            console.log("Setting up eatButton with direct onclick");
+            eatButton.onclick = () => {
                 this.performPersonalHealthAction('eat');
-            });
+            };
         } else {
             console.error("eatButton not found");
         }
         
         const drinkButton = document.getElementById('drink-button');
         if (drinkButton) {
-            console.log("Setting up drinkButton event listener");
-            drinkButton.addEventListener('click', () => {
+            console.log("Setting up drinkButton with direct onclick");
+            drinkButton.onclick = () => {
                 this.performPersonalHealthAction('drink');
-            });
+            };
         } else {
             console.error("drinkButton not found");
         }
         
         const personalRestButton = document.getElementById('personal-rest-button');
         if (personalRestButton) {
-            console.log("Setting up personalRestButton event listener");
-            personalRestButton.addEventListener('click', () => {
+            console.log("Setting up personalRestButton with direct onclick");
+            personalRestButton.onclick = () => {
                 this.performPersonalHealthAction('rest');
-            });
+            };
         } else {
             console.error("personalRestButton not found");
         }
@@ -241,7 +236,7 @@ window.CampScreen = {
         // Clear container
         clearChildren(locationButtonsContainer);
         
-        // Define hardcoded locations if needed as a fallback
+        // Define locations - always use this hardcoded array to ensure locations are available
         const locations = [
             {
                 name: "Beach",
@@ -341,25 +336,25 @@ window.CampScreen = {
             }
         ];
         
-        // Use either global campLocations or hardcoded locations
-        const locationsToUse = window.campLocations || locations;
+        // Save locations to window object so they can be accessed by other functions
+        window.campLocations = locations;
         
-        console.log("Creating location buttons for locations:", locationsToUse);
-        console.log("Number of locations:", locationsToUse.length);
+        console.log("Creating location buttons for locations:", locations);
+        console.log("Number of locations:", locations.length);
         
         // Create buttons for each location
-        locationsToUse.forEach((location, index) => {
+        locations.forEach((location, index) => {
             console.log(`Creating button for location ${index}: ${location.name}`);
             const button = document.createElement('button');
             button.className = 'location-button';
             button.textContent = location.name;
             button.setAttribute('data-location', location.name);
             
-            // Add direct event listener
-            button.addEventListener('click', () => {
+            // Add direct event listener using a more reliable method
+            button.onclick = () => {
                 console.log(`Location button clicked: ${location.name}`);
                 this.selectLocation(location);
-            });
+            };
             
             locationButtonsContainer.appendChild(button);
         });
