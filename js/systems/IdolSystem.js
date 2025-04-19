@@ -29,13 +29,26 @@ class IdolSystem {
         // Get hiding spots for that location
         const hidingSpots = this.getLocationHidingSpots(selectedLocation);
         
+        // Safety check to avoid errors
+        if (!hidingSpots || hidingSpots.length === 0) {
+            console.error("No hiding spots found for location:", selectedLocation);
+            return;
+        }
+        
         // Select one random hiding spot
+        const randomSpot = hidingSpots[Math.floor(Math.random() * hidingSpots.length)];
+        
+        // Create the idol location object
         this.idolLocation = {
             location: selectedLocation,
-            hidingSpot: hidingSpots[Math.floor(Math.random() * hidingSpots.length)]
+            hidingSpot: randomSpot
         };
         
-        console.log("Idol hidden in: " + JSON.stringify(this.idolLocation));
+        try {
+            console.log("Idol hidden in:", this.idolLocation);
+        } catch (e) {
+            console.error("Error logging idol location:", e);
+        }
     }
     
     /**
@@ -258,7 +271,11 @@ class IdolSystem {
         }
         
         console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
-        console.log(`Current idol location: ${JSON.stringify(this.idolLocation)}`);
+        try {
+            console.log("Current idol location:", this.idolLocation);
+        } catch (e) {
+            console.error("Error logging idol location:", e);
+        }
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
