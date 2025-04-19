@@ -10,34 +10,50 @@ window.CampScreen = {
         this.updateResourceDisplay();
         this.createLocationButtons();
         this.hideLocationActions();
+        this.setupButtonListeners();
+    },
+    
+    /**
+     * Set up button event listeners
+     */
+    setupButtonListeners() {
+        console.log("Setting up camp screen button listeners");
         
-        // Set up relationship button
-        const relationshipsButton = document.getElementById('view-relationships-button');
-        if (relationshipsButton) {
+        // Remove any existing event listeners to prevent duplicates
+        const oldRelationshipsButton = document.getElementById('view-relationships-button');
+        const oldAlliancesButton = document.getElementById('view-alliances-button');
+        const oldNextPhaseButton = document.getElementById('proceed-to-challenge-button');
+        
+        if (oldRelationshipsButton) {
+            const newRelationshipsButton = oldRelationshipsButton.cloneNode(true);
+            oldRelationshipsButton.parentNode.replaceChild(newRelationshipsButton, oldRelationshipsButton);
             console.log("Setting up relationshipsButton event listener");
-            relationshipsButton.addEventListener('click', () => {
+            newRelationshipsButton.addEventListener('click', () => {
+                console.log("Relationships button clicked");
                 this.viewRelationships();
             });
         } else {
             console.error("relationshipsButton not found");
         }
         
-        // Set up alliance button
-        const alliancesButton = document.getElementById('view-alliances-button');
-        if (alliancesButton) {
+        if (oldAlliancesButton) {
+            const newAlliancesButton = oldAlliancesButton.cloneNode(true);
+            oldAlliancesButton.parentNode.replaceChild(newAlliancesButton, oldAlliancesButton);
             console.log("Setting up alliancesButton event listener");
-            alliancesButton.addEventListener('click', () => {
+            newAlliancesButton.addEventListener('click', () => {
+                console.log("Alliances button clicked");
                 this.viewAlliances();
             });
         } else {
             console.error("alliancesButton not found");
         }
         
-        // Set up next phase button
-        const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
-        if (nextPhaseButton) {
+        if (oldNextPhaseButton) {
+            const newNextPhaseButton = oldNextPhaseButton.cloneNode(true);
+            oldNextPhaseButton.parentNode.replaceChild(newNextPhaseButton, oldNextPhaseButton);
             console.log("Setting up nextPhaseButton event listener");
-            nextPhaseButton.addEventListener('click', () => {
+            newNextPhaseButton.addEventListener('click', () => {
+                console.log("Next Phase button clicked");
                 this.proceedToNextPhase();
             });
         } else {
@@ -225,23 +241,121 @@ window.CampScreen = {
         // Clear container
         clearChildren(locationButtonsContainer);
         
-        if (!window.campLocations) {
-            console.error("campLocations is not defined globally!");
-            return;
-        }
+        // Define hardcoded locations if needed as a fallback
+        const locations = [
+            {
+                name: "Beach",
+                description: "The sandy shore around your camp where you can collect water and fish.",
+                actions: [
+                    {
+                        name: "Collect Water",
+                        description: "Gather water for your tribe.",
+                        type: "collectWater",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Fish",
+                        description: "Try to catch fish for food.",
+                        type: "findFood",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Social Time",
+                        description: "Spend time socializing with your tribe mates.",
+                        type: "socialize",
+                        energyCost: 1
+                    }
+                ]
+            },
+            {
+                name: "Jungle",
+                description: "The dense forest surrounding your camp where resources and hidden idols can be found.",
+                actions: [
+                    {
+                        name: "Gather Firewood",
+                        description: "Collect firewood to keep your camp fire going.",
+                        type: "gatherFirewood",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Forage for Food",
+                        description: "Search for fruits, plants, and small animals to eat.",
+                        type: "findFood",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Look for Idol",
+                        description: "Search for a hidden immunity idol.",
+                        type: "searchForIdol",
+                        energyCost: 2
+                    }
+                ]
+            },
+            {
+                name: "Camp",
+                description: "Your tribe's main living area with shelter and fire.",
+                actions: [
+                    {
+                        name: "Rest",
+                        description: "Recover some energy by resting.",
+                        type: "rest",
+                        energyCost: 0
+                    },
+                    {
+                        name: "Maintain Fire",
+                        description: "Work on keeping the fire strong.",
+                        type: "gatherFirewood",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Strategy Talk",
+                        description: "Discuss game strategy with tribe mates.",
+                        type: "strategic",
+                        energyCost: 1
+                    }
+                ]
+            },
+            {
+                name: "Private Area",
+                description: "A secluded spot away from camp where you can think or have private conversations.",
+                actions: [
+                    {
+                        name: "Strategic Planning",
+                        description: "Plan your moves in the game.",
+                        type: "strategic",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Physical Training",
+                        description: "Work on your physical abilities for challenges.",
+                        type: "trainPhysical",
+                        energyCost: 1
+                    },
+                    {
+                        name: "Mental Exercises",
+                        description: "Practice puzzles and mental challenges.",
+                        type: "trainMental",
+                        energyCost: 1
+                    }
+                ]
+            }
+        ];
         
-        console.log("Creating location buttons for campLocations:", window.campLocations);
-        console.log("Number of locations:", window.campLocations.length);
+        // Use either global campLocations or hardcoded locations
+        const locationsToUse = window.campLocations || locations;
         
-        // Create buttons for each location using window.campLocations (global) to ensure access
-        window.campLocations.forEach((location, index) => {
+        console.log("Creating location buttons for locations:", locationsToUse);
+        console.log("Number of locations:", locationsToUse.length);
+        
+        // Create buttons for each location
+        locationsToUse.forEach((location, index) => {
             console.log(`Creating button for location ${index}: ${location.name}`);
             const button = document.createElement('button');
             button.className = 'location-button';
             button.textContent = location.name;
             button.setAttribute('data-location', location.name);
             
-            // Add direct event listener instead of using createElement
+            // Add direct event listener
             button.addEventListener('click', () => {
                 console.log(`Location button clicked: ${location.name}`);
                 this.selectLocation(location);

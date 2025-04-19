@@ -2,16 +2,22 @@
 class GameManager {
     constructor() {
         // Game state
-        this.gameState = "welcome"; // welcome, characterSelection, tribeDivision, camp, challenge, tribalCouncil, merge, finalTribalCouncil, gameOver
+        this.gameState = "welcome"; // welcome, characterSelection, tribeDivision, camp, challenge, tribalCouncil, merge, finalTribalCouncil, gameOver, fireMakingChallenge
         this.gamePhase = "preMerge"; // preMerge, postMerge, final
         this.day = 1;
         this.tribes = [];
         this.playerCharacter = null;
         this.jury = [];
-        this.mergeDay = 12;
+        
+        // Merge settings
+        this.firstMergeThreshold = 14; // First merge (3→2 tribes) at 14 players left
+        this.finalMergeThreshold = 12; // Final merge (to 1 tribe) at 12 players left
         this.tribeCount = 2; // Default to 2 tribes, can be changed in welcome screen
-        this.gameSequence = "beforeChallenge"; // beforeChallenge, afterChallenge
+        
+        // Game flow tracking
+        this.gameSequence = "preChallenge"; // preChallenge, postChallenge
         this.lastVotedOut = null; // Store the last person voted out to display message
+        this.npcTribalResults = []; // Store eliminated players from NPC tribes
         
         // Initialize systems
         this.dialogueSystem = new DialogueSystem(this);
@@ -37,8 +43,9 @@ class GameManager {
         this.tribeCount = 2; // Reset to default
         this.lastEliminatedSurvivor = null; // Track last eliminated player
         this.dayAdvanced = false; // Track if a day was advanced
-        this.gameSequence = "beforeChallenge"; // Reset game sequence
+        this.gameSequence = "preChallenge"; // Reset game sequence
         this.lastVotedOut = null; // Reset last voted out
+        this.npcTribalResults = []; // Reset NPC tribal council results
         
         // Initialize systems
         this.energySystem.initialize();
