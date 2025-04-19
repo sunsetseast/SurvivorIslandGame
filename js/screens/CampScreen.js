@@ -66,36 +66,90 @@ window.CampScreen = {
             console.error("backButton not found");
         }
         
-        // Personal health action buttons
+        // Personal health action buttons - recreate them to ensure they work
+        this.createPersonalHealthButtons();
+        
+        // Process random events
+        this.processRandomEvents();
+    },
+    
+    /**
+     * Create personal health buttons
+     */
+    createPersonalHealthButtons() {
+        console.log("Creating personal health buttons");
+        
+        // Get buttons
         const eatButton = document.getElementById('eat-button');
-        if (eatButton) {
-            console.log("Setting up eatButton with direct onclick");
-            eatButton.onclick = () => {
-                this.performPersonalHealthAction('eat');
-            };
-        } else {
-            console.error("eatButton not found");
-        }
-        
         const drinkButton = document.getElementById('drink-button');
-        if (drinkButton) {
-            console.log("Setting up drinkButton with direct onclick");
-            drinkButton.onclick = () => {
-                this.performPersonalHealthAction('drink');
-            };
-        } else {
-            console.error("drinkButton not found");
+        const personalRestButton = document.getElementById('personal-rest-button');
+        
+        // If buttons don't exist, create them
+        const healthActionsContainer = document.querySelector('.health-actions-buttons');
+        if (!healthActionsContainer) {
+            console.error("Health actions container not found");
+            return;
         }
         
-        const personalRestButton = document.getElementById('personal-rest-button');
-        if (personalRestButton) {
-            console.log("Setting up personalRestButton with direct onclick");
-            personalRestButton.onclick = () => {
-                this.performPersonalHealthAction('rest');
-            };
-        } else {
-            console.error("personalRestButton not found");
-        }
+        // Clear existing buttons
+        clearChildren(healthActionsContainer);
+        
+        // Create eat button
+        const newEatButton = document.createElement('button');
+        newEatButton.id = 'eat-button';
+        newEatButton.className = 'action-button';
+        newEatButton.textContent = 'Eat (-10 Tribe Food)';
+        newEatButton.style.backgroundColor = '#ff9800';
+        newEatButton.style.color = 'white';
+        newEatButton.style.padding = '10px 20px';
+        newEatButton.style.margin = '5px';
+        newEatButton.style.border = 'none';
+        newEatButton.style.borderRadius = '5px';
+        newEatButton.style.cursor = 'pointer';
+        newEatButton.style.fontWeight = 'bold';
+        newEatButton.onclick = () => {
+            console.log("Eat button clicked");
+            this.performPersonalHealthAction('eat');
+        };
+        healthActionsContainer.appendChild(newEatButton);
+        
+        // Create drink button
+        const newDrinkButton = document.createElement('button');
+        newDrinkButton.id = 'drink-button';
+        newDrinkButton.className = 'action-button';
+        newDrinkButton.textContent = 'Drink (-10 Tribe Water)';
+        newDrinkButton.style.backgroundColor = '#2196f3';
+        newDrinkButton.style.color = 'white';
+        newDrinkButton.style.padding = '10px 20px';
+        newDrinkButton.style.margin = '5px';
+        newDrinkButton.style.border = 'none';
+        newDrinkButton.style.borderRadius = '5px';
+        newDrinkButton.style.cursor = 'pointer';
+        newDrinkButton.style.fontWeight = 'bold';
+        newDrinkButton.onclick = () => {
+            console.log("Drink button clicked");
+            this.performPersonalHealthAction('drink');
+        };
+        healthActionsContainer.appendChild(newDrinkButton);
+        
+        // Create rest button
+        const newRestButton = document.createElement('button');
+        newRestButton.id = 'personal-rest-button';
+        newRestButton.className = 'action-button';
+        newRestButton.textContent = 'Rest (Uses Fire)';
+        newRestButton.style.backgroundColor = '#673ab7';
+        newRestButton.style.color = 'white';
+        newRestButton.style.padding = '10px 20px';
+        newRestButton.style.margin = '5px';
+        newRestButton.style.border = 'none';
+        newRestButton.style.borderRadius = '5px';
+        newRestButton.style.cursor = 'pointer';
+        newRestButton.style.fontWeight = 'bold';
+        newRestButton.onclick = () => {
+            console.log("Rest button clicked");
+            this.performPersonalHealthAction('rest');
+        };
+        healthActionsContainer.appendChild(newRestButton);
         
         // Process random events
         this.processRandomEvents();
@@ -228,8 +282,21 @@ window.CampScreen = {
     createLocationButtons() {
         console.log("createLocationButtons called");
         const locationButtonsContainer = document.getElementById('location-buttons');
+        console.log("Location buttons container:", locationButtonsContainer);
+        
+        // Add safety check to verify DOM element exists
         if (!locationButtonsContainer) {
             console.error("Location buttons container not found!");
+            
+            // Let's try with a delay to ensure DOM is fully loaded
+            setTimeout(() => {
+                const retryContainer = document.getElementById('location-buttons');
+                console.log("Retry finding location-buttons container:", retryContainer);
+                if (retryContainer) {
+                    console.log("Found container on retry, continuing with location buttons creation");
+                    this._createLocationButtonsImpl(retryContainer);
+                }
+            }, 500);
             return;
         }
         
@@ -339,6 +406,26 @@ window.CampScreen = {
         // Save locations to window object so they can be accessed by other functions
         window.campLocations = locations;
         
+        // Call the implementation helper
+        this._createLocationButtonsImpl(locationButtonsContainer);
+    },
+    
+    /**
+     * Helper method to create location buttons
+     * @param {HTMLElement} container - The container element to append buttons to
+     */
+    _createLocationButtonsImpl(container) {
+        if (!container) {
+            console.error("Invalid container provided to _createLocationButtonsImpl");
+            return;
+        }
+        
+        // Clear the container first
+        clearChildren(container);
+        
+        // Use the saved locations
+        const locations = window.campLocations || [];
+        
         console.log("Creating location buttons for locations:", locations);
         console.log("Number of locations:", locations.length);
         
@@ -350,13 +437,23 @@ window.CampScreen = {
             button.textContent = location.name;
             button.setAttribute('data-location', location.name);
             
+            // Style the button to be more visible
+            button.style.margin = '5px';
+            button.style.padding = '10px 20px';
+            button.style.backgroundColor = '#5cb85c';
+            button.style.color = 'white';
+            button.style.border = 'none';
+            button.style.borderRadius = '5px';
+            button.style.cursor = 'pointer';
+            button.style.fontWeight = 'bold';
+            
             // Add direct event listener using a more reliable method
             button.onclick = () => {
                 console.log(`Location button clicked: ${location.name}`);
                 this.selectLocation(location);
             };
             
-            locationButtonsContainer.appendChild(button);
+            container.appendChild(button);
         });
     },
     
