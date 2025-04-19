@@ -1,6 +1,6 @@
 // Camp Screen
-// Make sure this is a global variable so it can be accessed from GameManager.js
-var CampScreen = {
+// Define CampScreen as a global variable
+window.CampScreen = {
     /**
      * Set up camp screen
      */
