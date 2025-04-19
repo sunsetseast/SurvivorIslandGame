@@ -690,15 +690,25 @@ class GameManager {
             this.jury.push(survivor);
         }
         
-        // Check if we've reached final 3
-        if (this.gamePhase === "postMerge" && tribe.members.length <= 3) {
-            this.gamePhase = "final";
-        }
+        // Check if we've reached final 4 or final 3
+        const totalPlayersLeft = this.tribes.reduce((count, t) => count + t.members.length, 0);
         
-        // Proceed to camp or final tribal council
-        if (this.gamePhase === "final") {
-            this.setGameState("finalTribalCouncil");
+        if (this.gamePhase === "postMerge") {
+            if (totalPlayersLeft === 4) {
+                // Final 4: Set up fire making challenge
+                console.log("Final 4 reached - preparing for fire making challenge");
+                this.setGameState("fireMakingChallenge");
+            } else if (totalPlayersLeft === 3) {
+                // Final 3: Go to final tribal council
+                console.log("Final 3 reached - proceeding to final tribal council");
+                this.gamePhase = "final";
+                this.setGameState("finalTribalCouncil");
+            } else {
+                // Regular elimination, go back to camp
+                this.setGameState("camp");
+            }
         } else {
+            // Pre-merge phase, return to camp
             this.setGameState("camp");
         }
     }
