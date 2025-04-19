@@ -44,8 +44,10 @@ class IdolSystem {
             hidingSpot: randomSpot
         };
         
+        // Log separately to avoid JSON syntax errors
         try {
-            console.log("Idol hidden in:", this.idolLocation);
+            console.log("Idol hidden at location:", selectedLocation);
+            console.log("Idol hidden at spot:", randomSpot);
         } catch (e) {
             console.error("Error logging idol location:", e);
         }
@@ -56,8 +58,15 @@ class IdolSystem {
      */
     showIdolSearch() {
         console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
+        
+        // Log separately to avoid JSON syntax errors
         try {
-            console.log("Current idol location is:", this.idolLocation);
+            if (this.idolLocation) {
+                console.log("Current idol location:", this.idolLocation.location);
+                console.log("Current idol hiding spot:", this.idolLocation.hidingSpot);
+            } else {
+                console.log("No idol location set");
+            }
         } catch (e) {
             console.error("Error logging idol location:", e);
         }
@@ -145,7 +154,7 @@ class IdolSystem {
         
         // Get location-specific hiding spots
         const hidingSpots = this.getLocationHidingSpots(locationName);
-        console.log("Available hiding spots:", hidingSpots);
+        console.log("Available hiding spots count:", hidingSpots.length);
         
         // Create buttons for each hiding spot
         hidingSpots.forEach(spot => {
@@ -160,13 +169,13 @@ class IdolSystem {
             button.style.margin = '5px 0';
             button.style.cursor = 'pointer';
             
-            button.addEventListener('click', () => {
+            button.onclick = () => {
                 // Remove the modal
                 document.body.removeChild(modalOverlay);
                 
                 // Start the idol search
                 this.startIdolSearch(spot);
-            });
+            };
             
             spotButtonsContainer.appendChild(button);
         });
@@ -185,9 +194,9 @@ class IdolSystem {
         cancelButton.style.cursor = 'pointer';
         cancelButton.style.width = '100%';
         
-        cancelButton.addEventListener('click', () => {
+        cancelButton.onclick = () => {
             document.body.removeChild(modalOverlay);
-        });
+        };
         
         modalContent.appendChild(cancelButton);
         modalOverlay.appendChild(modalContent);
@@ -274,12 +283,8 @@ class IdolSystem {
             return;
         }
         
-        console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
-        try {
-            console.log("Current idol location:", this.idolLocation);
-        } catch (e) {
-            console.error("Error logging idol location:", e);
-        }
+        console.log("Searching for idol at location:", locationName);
+        console.log("Searching for idol in spot:", hidingSpot);
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
@@ -316,13 +321,20 @@ class IdolSystem {
             ["Continue searching..."],
             () => {
                 // Check if this is where the idol is hidden
-                const idolFound = this.idolLocation && 
-                                 this.idolLocation.location === locationName && 
-                                 this.idolLocation.hidingSpot === hidingSpot;
+                let idolFound = false;
+                let locationMatch = false;
+                let hidingSpotMatch = false;
                 
-                console.log(`Idol found check: ${idolFound}`);
-                console.log(`Location match: ${this.idolLocation?.location === locationName}`);
-                console.log(`Hiding spot match: ${this.idolLocation?.hidingSpot === hidingSpot}`);
+                // Check matches with safe guarding
+                if (this.idolLocation) {
+                    locationMatch = this.idolLocation.location === locationName;
+                    hidingSpotMatch = this.idolLocation.hidingSpot === hidingSpot;
+                    idolFound = locationMatch && hidingSpotMatch;
+                }
+                
+                console.log("Idol found check:", idolFound);
+                console.log("Location match:", locationMatch);
+                console.log("Hiding spot match:", hidingSpotMatch);
                 
                 // After a brief pause, show result
                 if (idolFound) {
@@ -354,7 +366,7 @@ class IdolSystem {
                         ];
                         
                         const selectedMessage = getRandomItem(messages);
-                        console.log(`Didn't find idol. Message: ${selectedMessage}`);
+                        console.log("Didn't find idol. Message:", selectedMessage);
                         
                         this.gameManager.dialogueSystem.showDialogue(
                             selectedMessage,
@@ -497,18 +509,18 @@ class IdolSystem {
         console.log("Checking for survivors with idols...");
         
         this.gameManager.getTribes().forEach(tribe => {
-            console.log(`Checking tribe ${tribe.tribeName} with ${tribe.members.length} members`);
+            console.log("Checking tribe", tribe.tribeName, "with", tribe.members.length, "members");
             
             tribe.members.forEach(member => {
-                console.log(`Checking member ${member.name}, hasIdol: ${member.hasIdol}`);
+                console.log("Checking member", member.name, "hasIdol:", member.hasIdol);
                 if (member.hasIdol) {
                     survivorsWithIdols.push(member);
-                    console.log(`Added ${member.name} to idol holders list`);
+                    console.log("Added", member.name, "to idol holders list");
                 }
             });
         });
         
-        console.log(`Found ${survivorsWithIdols.length} survivors with idols`);
+        console.log("Found", survivorsWithIdols.length, "survivors with idols");
         return survivorsWithIdols;
     }
 }
