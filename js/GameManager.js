@@ -126,8 +126,24 @@ class GameManager {
                 TribalCouncilScreen.setup();
                 break;
                 
+            case "fireMakingChallenge":
+                // Show the fire making challenge screen
+                console.log("Displaying fire making challenge screen");
+                showScreen("fire-making-challenge-screen");
+                // Initialize fire making challenge screen if it exists
+                if (window.FireMakingChallengeScreen) {
+                    if (!this.fireMakingChallengeScreen) {
+                        this.fireMakingChallengeScreen = new FireMakingChallengeScreen(this);
+                    }
+                    this.fireMakingChallengeScreen.setup();
+                } else {
+                    console.error("FireMakingChallengeScreen not found!");
+                }
+                break;
+                
             case "finalTribalCouncil":
                 // Handle final tribal council
+                console.log("Displaying final tribal council screen");
                 break;
                 
             case "gameOver":
