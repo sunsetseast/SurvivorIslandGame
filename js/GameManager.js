@@ -566,16 +566,20 @@ class GameManager {
             totalPlayers += tribe.members.length;
         });
         
-        // In 3-tribe mode, we shuffle to 2 tribes at 14 players
-        if (this.tribes.length === 3 && totalPlayers <= 14 && totalPlayers > 12) {
+        // In 3-tribe mode, shuffle to 2 tribes at firstMergeThreshold (14 players)
+        if (this.tribes.length === 3 && totalPlayers <= this.firstMergeThreshold && totalPlayers > this.finalMergeThreshold) {
+            console.log(`First merge triggered: shuffling from 3 tribes to 2 tribes at ${totalPlayers} players`);
             // Shuffle from 3 tribes to 2 tribes
             this.shuffleTribes(2);
+            this.setGameState("tribeShuffle");
             return;
         }
         
-        // Regular merge to 1 tribe at merge day or when we have 12 or fewer players in pre-merge
-        if (this.day >= this.mergeDay || totalPlayers <= 12) {
+        // Final merge to 1 tribe at finalMergeThreshold (12 players)
+        if (totalPlayers <= this.finalMergeThreshold && this.tribes.length > 1) {
+            console.log(`Final merge triggered: merging to 1 tribe at ${totalPlayers} players`);
             this.setGameState("merge");
+            return;
         }
     }
     
