@@ -56,7 +56,11 @@ class IdolSystem {
      */
     showIdolSearch() {
         console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-        console.log("Current idol location is: " + JSON.stringify(this.idolLocation));
+        try {
+            console.log("Current idol location is:", this.idolLocation);
+        } catch (e) {
+            console.error("Error logging idol location:", e);
+        }
         
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
