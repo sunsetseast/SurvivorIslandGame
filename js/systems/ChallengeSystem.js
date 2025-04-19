@@ -275,7 +275,7 @@ class ChallengeSystem {
             (this.currentChallenge.primaryStat === "physical" ? "physical strength and endurance." : 
              this.currentChallenge.primaryStat === "mental" ? "mental ability and puzzle-solving." : 
              "social skills and adaptability."),
-            ["Watch Challenge"],
+            ["Begin Challenge"],
             () => {
                 this.gameManager.dialogueSystem.hideDialogue();
                 

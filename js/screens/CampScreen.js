@@ -19,34 +19,41 @@ window.CampScreen = {
     setupButtonListeners() {
         console.log("Setting up camp screen button listeners");
         
-        // Relationship button
-        const relationshipsButton = document.getElementById('view-relationships-button');
-        if (relationshipsButton) {
-            console.log("Setting up relationshipsButton with direct onclick");
-            relationshipsButton.onclick = () => {
-                console.log("Relationships button clicked");
-                this.viewRelationships();
-            };
-        } else {
-            console.error("relationshipsButton not found");
-        }
+        // Create navigation buttons container first
+        this.createNavigationContainer();
         
-        // Alliances button
-        const alliancesButton = document.getElementById('view-alliances-button');
-        if (alliancesButton) {
-            console.log("Setting up alliancesButton with direct onclick");
-            alliancesButton.onclick = () => {
-                console.log("Alliances button clicked");
-                this.viewAlliances();
-            };
-        } else {
-            console.error("alliancesButton not found");
-        }
-        
-        // Next Phase button
-        const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
-        if (nextPhaseButton) {
-            console.log("Setting up nextPhaseButton with direct onclick");
+        // Then create the buttons with proper styling using tribe colors
+        setTimeout(() => {
+            // Relationship button
+            const relationshipsButton = document.getElementById('view-relationships-button');
+            if (relationshipsButton) {
+                console.log("Setting up relationshipsButton with direct onclick");
+                relationshipsButton.onclick = () => {
+                    console.log("Relationships button clicked");
+                    this.viewRelationships();
+                };
+            } else {
+                console.error("relationshipsButton not found");
+                this.createRelationshipsButton();
+            }
+            
+            // Alliances button
+            const alliancesButton = document.getElementById('view-alliances-button');
+            if (alliancesButton) {
+                console.log("Setting up alliancesButton with direct onclick");
+                alliancesButton.onclick = () => {
+                    console.log("Alliances button clicked");
+                    this.viewAlliances();
+                };
+            } else {
+                console.error("alliancesButton not found");
+                this.createAlliancesButton();
+            }
+            
+            // Next Phase button
+            const nextPhaseButton = document.getElementById('proceed-to-challenge-button');
+            if (nextPhaseButton) {
+                console.log("Setting up nextPhaseButton with direct onclick");
             nextPhaseButton.onclick = () => {
                 console.log("Next Phase button clicked");
                 this.proceedToNextPhase();
@@ -71,6 +78,115 @@ window.CampScreen = {
         
         // Process random events
         this.processRandomEvents();
+    },
+    
+    /**
+     * Create navigation container
+     */
+    createNavigationContainer() {
+        console.log("Creating navigation container");
+        
+        // Look for the bottom section of the camp screen
+        const campScreen = document.getElementById('camp-screen');
+        if (!campScreen) {
+            console.error("Camp screen element not found");
+            return;
+        }
+        
+        // Check if navigation container already exists
+        let navContainer = document.getElementById('navigation-buttons-container');
+        if (navContainer) {
+            // Already exists, clear it
+            clearChildren(navContainer);
+            return navContainer;
+        }
+        
+        // Create new navigation container
+        navContainer = document.createElement('div');
+        navContainer.id = 'navigation-buttons-container';
+        navContainer.className = 'navigation-buttons-container';
+        navContainer.style.display = 'flex';
+        navContainer.style.justifyContent = 'space-around';
+        navContainer.style.padding = '15px';
+        navContainer.style.marginTop = '20px';
+        navContainer.style.backgroundColor = '#f8f9fa';
+        navContainer.style.borderRadius = '8px';
+        navContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+        
+        // Add to the camp screen
+        campScreen.appendChild(navContainer);
+        
+        return navContainer;
+    },
+    
+    /**
+     * Create relationships button
+     */
+    createRelationshipsButton() {
+        const navContainer = document.getElementById('navigation-buttons-container');
+        if (!navContainer) {
+            console.error("Navigation container not found");
+            return;
+        }
+        
+        // Get player tribe color for styling
+        const playerTribe = gameManager.getPlayerTribe();
+        const tribeColor = playerTribe ? playerTribe.tribeColor : '#28a745';
+        
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'view-relationships-button';
+        button.textContent = 'Relationships';
+        button.style.backgroundColor = tribeColor;
+        button.style.color = 'white';
+        button.style.padding = '10px 20px';
+        button.style.margin = '5px';
+        button.style.border = 'none';
+        button.style.borderRadius = '5px';
+        button.style.cursor = 'pointer';
+        button.style.fontWeight = 'bold';
+        button.onclick = () => {
+            console.log("Relationships button clicked");
+            this.viewRelationships();
+        };
+        
+        navContainer.appendChild(button);
+        return button;
+    },
+    
+    /**
+     * Create alliances button
+     */
+    createAlliancesButton() {
+        const navContainer = document.getElementById('navigation-buttons-container');
+        if (!navContainer) {
+            console.error("Navigation container not found");
+            return;
+        }
+        
+        // Get player tribe color for styling
+        const playerTribe = gameManager.getPlayerTribe();
+        const tribeColor = playerTribe ? playerTribe.tribeColor : '#28a745';
+        
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'view-alliances-button';
+        button.textContent = 'Alliances';
+        button.style.backgroundColor = tribeColor;
+        button.style.color = 'white';
+        button.style.padding = '10px 20px';
+        button.style.margin = '5px';
+        button.style.border = 'none';
+        button.style.borderRadius = '5px';
+        button.style.cursor = 'pointer';
+        button.style.fontWeight = 'bold';
+        button.onclick = () => {
+            console.log("Alliances button clicked");
+            this.viewAlliances();
+        };
+        
+        navContainer.appendChild(button);
+        return button;
     },
     
     /**
