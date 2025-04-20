@@ -1,46 +1,49 @@
 /**
  * @module EventManager
- * Centralized event system using the Publish-Subscribe pattern
+ * Manages event publishing and subscription throughout the game
+ * Implements a pub-sub pattern for decoupled communication
  */
 
-// Define game events to ensure consistency in event naming
+// List of game events
 export const GameEvents = {
-  // Core events
+  // Game state events
   GAME_INITIALIZED: 'game:initialized',
   GAME_STARTED: 'game:started',
+  GAME_STATE_CHANGED: 'game:stateChanged',
+  GAME_PHASE_CHANGED: 'game:phaseChanged',
   GAME_SAVED: 'game:saved',
   GAME_LOADED: 'game:loaded',
   GAME_OVER: 'game:over',
   
-  // Phase events
-  PHASE_CHANGED: 'phase:changed',
-  DAY_ADVANCED: 'day:advanced',
-  
   // Screen events
   SCREEN_CHANGED: 'screen:changed',
-  SCREEN_REFRESHED: 'screen:refreshed',
-  DIALOG_SHOWN: 'dialog:shown',
-  DIALOG_CLOSED: 'dialog:closed',
   
   // Character events
   CHARACTER_SELECTED: 'character:selected',
-  PLAYER_HEALTH_CHANGED: 'player:healthChanged',
   
   // Tribe events
   TRIBES_CREATED: 'tribes:created',
   TRIBES_MERGED: 'tribes:merged',
-  TRIBE_RESOURCES_CHANGED: 'tribe:resourcesChanged',
-  TRIBE_IMMUNITY_CHANGED: 'tribe:immunityChanged',
+  TRIBE_SHUFFLED: 'tribes:shuffled',
+  
+  // Day events
+  DAY_STARTED: 'day:started',
+  DAY_ADVANCED: 'day:advanced',
+  
+  // Camp events
+  CAMP_ACTIVITY_COMPLETED: 'camp:activityCompleted',
+  RESOURCE_GATHERED: 'resource:gathered',
+  RESOURCE_USED: 'resource:used',
   
   // Challenge events
   CHALLENGE_STARTED: 'challenge:started',
   CHALLENGE_COMPLETED: 'challenge:completed',
-  IMMUNITY_WON: 'immunity:won',
+  IMMUNITY_GRANTED: 'immunity:granted',
+  REWARD_GRANTED: 'reward:granted',
   
   // Tribal council events
   TRIBAL_COUNCIL_STARTED: 'tribalCouncil:started',
   VOTE_CAST: 'vote:cast',
-  IDOL_PLAYED: 'idol:played',
   SURVIVOR_ELIMINATED: 'survivor:eliminated',
   
   // Relationship events
@@ -50,148 +53,152 @@ export const GameEvents = {
   ALLIANCE_FORMED: 'alliance:formed',
   ALLIANCE_DISBANDED: 'alliance:disbanded',
   ALLIANCE_MEMBER_ADDED: 'alliance:memberAdded',
-  ALLIANCE_MEMBER_REMOVED: 'alliance:memberRemoved'
+  ALLIANCE_MEMBER_REMOVED: 'alliance:memberRemoved',
+  
+  // Idol events
+  IDOL_FOUND: 'idol:found',
+  IDOL_PLAYED: 'idol:played',
+  
+  // Health events
+  HEALTH_CHANGED: 'health:changed',
+  ENERGY_CHANGED: 'energy:changed',
+  
+  // UI events
+  UI_UPDATED: 'ui:updated',
+  DIALOGUE_SHOWN: 'dialogue:shown',
+  DIALOGUE_HIDDEN: 'dialogue:hidden'
 };
 
 class EventManager {
   constructor() {
-    this.events = new Map();
-    this.debugMode = false;
-  }
-  
-  /**
-   * Enable or disable debug logging
-   * @param {boolean} enabled - Whether to enable debug mode
-   */
-  setDebugMode(enabled) {
-    this.debugMode = enabled;
+    this.subscribers = {};
+    this.history = [];
+    this.maxHistoryLength = 100;
+    this.debug = false; // Set to true to enable debug logging
   }
   
   /**
    * Subscribe to an event
-   * @param {string} eventName - The name of the event
-   * @param {Function} callback - The callback function to execute when the event is published
+   * @param {string} event - Event name
+   * @param {Function} callback - Function to call when event is published
    * @returns {Function} Unsubscribe function
    */
-  subscribe(eventName, callback) {
-    if (!this.events.has(eventName)) {
-      this.events.set(eventName, []);
+  subscribe(event, callback) {
+    if (!this.subscribers[event]) {
+      this.subscribers[event] = [];
     }
     
-    const handlers = this.events.get(eventName);
-    handlers.push(callback);
+    this.subscribers[event].push(callback);
     
     // Return unsubscribe function
     return () => {
-      this.unsubscribe(eventName, callback);
+      this.unsubscribe(event, callback);
     };
   }
   
   /**
    * Unsubscribe from an event
-   * @param {string} eventName - The name of the event
-   * @param {Function} callback - The callback function to remove
-   * @returns {boolean} Whether the unsubscribe was successful
+   * @param {string} event - Event name
+   * @param {Function} callback - The callback to remove
    */
-  unsubscribe(eventName, callback) {
-    if (!this.events.has(eventName)) {
-      return false;
+  unsubscribe(event, callback) {
+    if (!this.subscribers[event]) return;
+    
+    this.subscribers[event] = this.subscribers[event].filter(
+      subscriber => subscriber !== callback
+    );
+    
+    // Clean up empty event arrays
+    if (this.subscribers[event].length === 0) {
+      delete this.subscribers[event];
     }
-    
-    const handlers = this.events.get(eventName);
-    const index = handlers.indexOf(callback);
-    
-    if (index === -1) {
-      return false;
-    }
-    
-    handlers.splice(index, 1);
-    
-    // If no more handlers, remove the event
-    if (handlers.length === 0) {
-      this.events.delete(eventName);
-    }
-    
-    return true;
   }
   
   /**
    * Publish an event
-   * @param {string} eventName - The name of the event
-   * @param {Object} data - The data to pass to the callback functions
+   * @param {string} event - Event name
+   * @param {Object} data - Data to pass to subscribers
    */
-  publish(eventName, data = {}) {
-    if (this.debugMode) {
-      console.log(`Event published: ${eventName}`, data);
+  publish(event, data = {}) {
+    if (this.debug) {
+      console.log(`Event published: ${event}`, data);
     }
     
-    if (!this.events.has(eventName)) {
-      return;
+    // Add event to history
+    this.history.push({
+      event,
+      data,
+      timestamp: Date.now()
+    });
+    
+    // Trim history if needed
+    if (this.history.length > this.maxHistoryLength) {
+      this.history = this.history.slice(-this.maxHistoryLength);
     }
     
-    const handlers = this.events.get(eventName);
+    // Notify subscribers
+    if (!this.subscribers[event]) return;
     
-    // Execute each handler with the event data
-    handlers.forEach(handler => {
+    // Make a copy of subscribers to avoid issues if a subscriber unsubscribes during iteration
+    const subscribersCopy = [...this.subscribers[event]];
+    
+    subscribersCopy.forEach(callback => {
       try {
-        handler(data);
+        callback(data);
       } catch (error) {
-        console.error(`Error in event handler for ${eventName}:`, error);
+        console.error(`Error in event handler for ${event}:`, error);
       }
     });
   }
   
   /**
-   * Subscribe to an event once (auto-unsubscribe after first trigger)
-   * @param {string} eventName - The name of the event
-   * @param {Function} callback - The callback function to execute when the event is published
-   * @returns {Function} Unsubscribe function
+   * Get event history
+   * @param {string} eventFilter - Optional event name to filter history
+   * @param {number} limit - Maximum number of history items to return
+   * @returns {Array} Event history
    */
-  once(eventName, callback) {
-    const wrappedCallback = (data) => {
-      // Unsubscribe first
-      this.unsubscribe(eventName, wrappedCallback);
-      // Then call the original callback
-      callback(data);
-    };
-    
-    return this.subscribe(eventName, wrappedCallback);
-  }
-  
-  /**
-   * Remove all event listeners
-   */
-  clear() {
-    this.events.clear();
-  }
-  
-  /**
-   * Remove all event listeners for a specific event
-   * @param {string} eventName - The name of the event
-   */
-  clearEvent(eventName) {
-    this.events.delete(eventName);
-  }
-  
-  /**
-   * Get count of subscribers for a specific event
-   * @param {string} eventName - The name of the event
-   * @returns {number} The number of subscribers
-   */
-  getSubscriberCount(eventName) {
-    if (!this.events.has(eventName)) {
-      return 0;
+  getHistory(eventFilter = null, limit = this.maxHistoryLength) {
+    if (eventFilter) {
+      return this.history
+        .filter(item => item.event === eventFilter)
+        .slice(-limit);
     }
     
-    return this.events.get(eventName).length;
+    return this.history.slice(-limit);
   }
   
   /**
-   * Get all registered events
+   * Clear all subscribers and history
+   */
+  clear() {
+    this.subscribers = {};
+    this.history = [];
+  }
+  
+  /**
+   * Set debug mode
+   * @param {boolean} enabled - Whether to enable debug mode
+   */
+  setDebug(enabled) {
+    this.debug = enabled;
+  }
+  
+  /**
+   * Get subscriber count for an event
+   * @param {string} event - Event name
+   * @returns {number} Number of subscribers
+   */
+  getSubscriberCount(event) {
+    if (!this.subscribers[event]) return 0;
+    return this.subscribers[event].length;
+  }
+  
+  /**
+   * Get all events with subscribers
    * @returns {Array} Array of event names
    */
-  getEvents() {
-    return Array.from(this.events.keys());
+  getActiveEvents() {
+    return Object.keys(this.subscribers);
   }
 }
 

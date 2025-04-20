@@ -1,195 +1,231 @@
 /**
  * @module StorageUtils
- * Local storage utility functions for saving and loading game state
+ * Utility functions for localStorage and sessionStorage
  */
-
-const SAVE_GAME_KEY = 'survivor_island_save';
 
 /**
- * Save game data to localStorage
- * @param {Object} gameData - The game data to save
- * @returns {boolean} True if save was successful, false otherwise
+ * Save data to localStorage
+ * @param {string} key - The storage key
+ * @param {*} data - The data to save
+ * @returns {boolean} Whether the operation was successful
  */
-export function saveGame(gameData) {
+export function saveToLocalStorage(key, data) {
   try {
-    // Create a sanitized version of game data to ensure it's JSON-safe
-    const sanitizedData = sanitizeForStorage(gameData);
-    
-    // Convert to JSON string
-    const gameDataString = JSON.stringify(sanitizedData);
-    
-    // Save to localStorage
-    localStorage.setItem(SAVE_GAME_KEY, gameDataString);
-    
-    console.log('Game saved successfully');
+    const serializedData = JSON.stringify(data);
+    localStorage.setItem(key, serializedData);
     return true;
   } catch (error) {
-    console.error('Error saving game:', error);
+    console.error(`Error saving to localStorage: ${error.message}`);
     return false;
   }
 }
 
 /**
- * Load game data from localStorage
- * @returns {Object|null} The loaded game data or null if no save exists
+ * Load data from localStorage
+ * @param {string} key - The storage key
+ * @param {*} defaultValue - Default value if key doesn't exist
+ * @returns {*} The loaded data or default value
  */
-export function loadGame() {
+export function loadFromLocalStorage(key, defaultValue = null) {
   try {
-    // Get saved data from localStorage
-    const gameDataString = localStorage.getItem(SAVE_GAME_KEY);
+    const serializedData = localStorage.getItem(key);
     
-    // Check if data exists
-    if (!gameDataString) {
-      console.log('No saved game found');
-      return null;
+    if (serializedData === null) {
+      return defaultValue;
     }
     
-    // Parse JSON string to object
-    const gameData = JSON.parse(gameDataString);
-    
-    console.log('Game loaded successfully');
-    return gameData;
+    return JSON.parse(serializedData);
   } catch (error) {
-    console.error('Error loading game:', error);
-    return null;
+    console.error(`Error loading from localStorage: ${error.message}`);
+    return defaultValue;
   }
 }
 
 /**
- * Check if a save game exists
- * @returns {boolean} True if a save exists, false otherwise
+ * Remove data from localStorage
+ * @param {string} key - The storage key
+ * @returns {boolean} Whether the operation was successful
  */
-export function saveGameExists() {
-  return !!localStorage.getItem(SAVE_GAME_KEY);
-}
-
-/**
- * Delete the save game
- * @returns {boolean} True if delete was successful, false otherwise
- */
-export function deleteSaveGame() {
+export function removeFromLocalStorage(key) {
   try {
-    localStorage.removeItem(SAVE_GAME_KEY);
-    console.log('Save game deleted');
+    localStorage.removeItem(key);
     return true;
   } catch (error) {
-    console.error('Error deleting save game:', error);
+    console.error(`Error removing from localStorage: ${error.message}`);
     return false;
   }
 }
 
 /**
- * Sanitize an object for storage in localStorage
- * Removes circular references and non-serializable values
- * @param {Object} obj - The object to sanitize
- * @returns {Object} A sanitized copy of the object
- * @private
+ * Check if a key exists in localStorage
+ * @param {string} key - The storage key
+ * @returns {boolean} Whether the key exists
  */
-function sanitizeForStorage(obj) {
-  const seen = new WeakSet();
-  
-  return JSON.parse(JSON.stringify(obj, (key, value) => {
-    // Handle functions by converting to a special type marker
-    if (typeof value === 'function') {
-      return '[Function]';
-    }
-    
-    // Handle sets by converting to arrays
-    if (value instanceof Set) {
-      return {
-        _type: 'Set',
-        values: Array.from(value)
-      };
-    }
-    
-    // Handle maps by converting to objects
-    if (value instanceof Map) {
-      return {
-        _type: 'Map',
-        entries: Array.from(value.entries())
-      };
-    }
-    
-    // Handle date objects
-    if (value instanceof Date) {
-      return {
-        _type: 'Date',
-        value: value.toISOString()
-      };
-    }
-    
-    // Handle DOM elements (don't try to serialize them)
-    if (value instanceof HTMLElement) {
-      return '[HTMLElement]';
-    }
-    
-    // Handle errors
-    if (value instanceof Error) {
-      return {
-        _type: 'Error',
-        message: value.message,
-        stack: value.stack
-      };
-    }
-    
-    // Handle objects with special properties or circular references
-    if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) {
-        return '[Circular]';
-      }
-      seen.add(value);
-    }
-    
-    return value;
-  }));
+export function localStorageHas(key) {
+  try {
+    return localStorage.getItem(key) !== null;
+  } catch (error) {
+    console.error(`Error checking localStorage: ${error.message}`);
+    return false;
+  }
 }
 
 /**
- * Restore special objects from their serialized forms
- * @param {Object} obj - The object to restore
- * @returns {Object} The restored object
- * @private
+ * Save data to sessionStorage
+ * @param {string} key - The storage key
+ * @param {*} data - The data to save
+ * @returns {boolean} Whether the operation was successful
  */
-function restoreFromStorage(obj) {
-  function reviver(key, value) {
-    // Skip primitives and non-objects
-    if (typeof value !== 'object' || value === null) {
-      return value;
+export function saveToSessionStorage(key, data) {
+  try {
+    const serializedData = JSON.stringify(data);
+    sessionStorage.setItem(key, serializedData);
+    return true;
+  } catch (error) {
+    console.error(`Error saving to sessionStorage: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Load data from sessionStorage
+ * @param {string} key - The storage key
+ * @param {*} defaultValue - Default value if key doesn't exist
+ * @returns {*} The loaded data or default value
+ */
+export function loadFromSessionStorage(key, defaultValue = null) {
+  try {
+    const serializedData = sessionStorage.getItem(key);
+    
+    if (serializedData === null) {
+      return defaultValue;
     }
     
-    // Restore special types based on _type marker
-    if (value._type) {
-      switch (value._type) {
-        case 'Set':
-          return new Set(value.values);
-        case 'Map':
-          return new Map(value.entries);
-        case 'Date':
-          return new Date(value.value);
-        case 'Error':
-          const error = new Error(value.message);
-          error.stack = value.stack;
-          return error;
-      }
+    return JSON.parse(serializedData);
+  } catch (error) {
+    console.error(`Error loading from sessionStorage: ${error.message}`);
+    return defaultValue;
+  }
+}
+
+/**
+ * Remove data from sessionStorage
+ * @param {string} key - The storage key
+ * @returns {boolean} Whether the operation was successful
+ */
+export function removeFromSessionStorage(key) {
+  try {
+    sessionStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.error(`Error removing from sessionStorage: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Check if a key exists in sessionStorage
+ * @param {string} key - The storage key
+ * @returns {boolean} Whether the key exists
+ */
+export function sessionStorageHas(key) {
+  try {
+    return sessionStorage.getItem(key) !== null;
+  } catch (error) {
+    console.error(`Error checking sessionStorage: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Clear all local storage data
+ * @returns {boolean} Whether the operation was successful
+ */
+export function clearLocalStorage() {
+  try {
+    localStorage.clear();
+    return true;
+  } catch (error) {
+    console.error(`Error clearing localStorage: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Clear all session storage data
+ * @returns {boolean} Whether the operation was successful
+ */
+export function clearSessionStorage() {
+  try {
+    sessionStorage.clear();
+    return true;
+  } catch (error) {
+    console.error(`Error clearing sessionStorage: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Get the total size of localStorage in bytes
+ * @returns {number} Size in bytes
+ */
+export function getLocalStorageSize() {
+  try {
+    let totalSize = 0;
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const value = localStorage.getItem(key);
+      totalSize += key.length + value.length;
     }
     
-    return value;
+    return totalSize;
+  } catch (error) {
+    console.error(`Error getting localStorage size: ${error.message}`);
+    return 0;
   }
-  
-  // Recursively process all properties
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const value = obj[key];
-      
-      if (typeof value === 'object' && value !== null) {
-        if (value._type) {
-          obj[key] = reviver(key, value);
-        } else {
-          restoreFromStorage(value);
-        }
-      }
+}
+
+/**
+ * Check if localStorage is available
+ * @returns {boolean} Whether localStorage is available
+ */
+export function isLocalStorageAvailable() {
+  try {
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Get all localStorage keys
+ * @returns {Array} Array of keys
+ */
+export function getLocalStorageKeys() {
+  try {
+    const keys = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      keys.push(localStorage.key(i));
     }
+    
+    return keys;
+  } catch (error) {
+    console.error(`Error getting localStorage keys: ${error.message}`);
+    return [];
   }
-  
-  return obj;
+}
+
+/**
+ * Create a namespaced localStorage key
+ * @param {string} namespace - The namespace
+ * @param {string} key - The key
+ * @returns {string} The namespaced key
+ */
+export function createNamespacedKey(namespace, key) {
+  return `${namespace}:${key}`;
 }

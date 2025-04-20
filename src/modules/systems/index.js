@@ -7,10 +7,10 @@
 export { default as DialogueSystem } from './DialogueSystem.js';
 export { default as EnergySystem } from './EnergySystem.js';
 export { default as IdolSystem } from './IdolSystem.js';
+export { default as RelationshipSystem, RelationshipType } from './RelationshipSystem.js';
+export { default as AllianceSystem } from './AllianceSystem.js';
 // Uncomment as these modules get implemented
 /*
-export { default as RelationshipSystem } from './RelationshipSystem.js';
-export { default as AllianceSystem } from './AllianceSystem.js';
 export { default as ChallengeSystem } from './ChallengeSystem.js';
 export { default as TribalCouncilSystem } from './TribalCouncilSystem.js';
 */
@@ -19,10 +19,10 @@ export { default as TribalCouncilSystem } from './TribalCouncilSystem.js';
 import DialogueSystem from './DialogueSystem.js';
 import EnergySystem from './EnergySystem.js';
 import IdolSystem from './IdolSystem.js';
+import RelationshipSystem, { RelationshipType } from './RelationshipSystem.js';
+import AllianceSystem from './AllianceSystem.js';
 // Uncomment as these modules get implemented
 /*
-import RelationshipSystem from './RelationshipSystem.js';
-import AllianceSystem from './AllianceSystem.js';
 import ChallengeSystem from './ChallengeSystem.js';
 import TribalCouncilSystem from './TribalCouncilSystem.js';
 */
@@ -32,10 +32,11 @@ export default {
   DialogueSystem,
   EnergySystem,
   IdolSystem,
+  RelationshipSystem,
+  RelationshipType,
+  AllianceSystem,
   // Uncomment as these modules get implemented
   /*
-  RelationshipSystem,
-  AllianceSystem,
   ChallengeSystem,
   TribalCouncilSystem
   */

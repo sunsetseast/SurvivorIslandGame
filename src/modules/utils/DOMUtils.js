@@ -1,64 +1,43 @@
 /**
  * @module DOMUtils
- * DOM manipulation utility functions
+ * Utility functions for DOM manipulation
  */
 
 /**
- * Get an element by ID, query selector, or return the element if already an element
- * @param {string|HTMLElement} idOrElement - Element ID, query selector, or HTML element
+ * Get an element by ID or selector
+ * @param {string} idOrSelector - Element ID or CSS selector
  * @returns {HTMLElement|null} The found element or null
  */
-export function getElement(idOrElement) {
-  if (idOrElement instanceof HTMLElement) {
-    return idOrElement;
-  }
+export function getElement(idOrSelector) {
+  if (!idOrSelector) return null;
   
-  if (typeof idOrElement === 'string') {
-    // Try to get by ID first
-    const elementById = document.getElementById(idOrElement);
-    if (elementById) {
-      return elementById;
-    }
-    
-    // Then try as a selector
+  // First try by ID
+  let element = document.getElementById(idOrSelector);
+  
+  // If not found, try as a selector
+  if (!element) {
     try {
-      return document.querySelector(idOrElement);
+      element = document.querySelector(idOrSelector);
     } catch (e) {
-      console.error(`Invalid selector: ${idOrElement}`, e);
-      return null;
+      console.error(`Invalid selector: ${idOrSelector}`);
     }
   }
   
-  return null;
+  return element;
 }
 
 /**
- * Get elements by class name, query selector, or return array if already an array
- * @param {string|Array} classOrSelector - Class name, query selector, or array of elements
- * @returns {Array} Array of matching elements
+ * Get all elements matching a selector
+ * @param {string} selector - CSS selector
+ * @returns {NodeList} The found elements
  */
-export function getElements(classOrSelector) {
-  if (Array.isArray(classOrSelector)) {
-    return classOrSelector;
+export function getElements(selector) {
+  try {
+    return document.querySelectorAll(selector);
+  } catch (e) {
+    console.error(`Invalid selector: ${selector}`);
+    return [];
   }
-  
-  if (typeof classOrSelector === 'string') {
-    // Try class name first
-    const elementsByClass = document.getElementsByClassName(classOrSelector);
-    if (elementsByClass.length > 0) {
-      return Array.from(elementsByClass);
-    }
-    
-    // Then try as a selector
-    try {
-      return Array.from(document.querySelectorAll(classOrSelector));
-    } catch (e) {
-      console.error(`Invalid selector: ${classOrSelector}`, e);
-      return [];
-    }
-  }
-  
-  return [];
 }
 
 /**
@@ -75,41 +54,43 @@ export function createElement(tag, attributes = {}, children = []) {
   Object.entries(attributes).forEach(([key, value]) => {
     if (key === 'style' && typeof value === 'object') {
       // Handle style object
-      Object.entries(value).forEach(([prop, val]) => {
-        element.style[prop] = val;
-      });
-    } else if (key === 'className') {
-      // Handle className
-      element.className = value;
-    } else if (key === 'dataset') {
-      // Handle dataset
-      Object.entries(value).forEach(([dataKey, dataValue]) => {
-        element.dataset[dataKey] = dataValue;
+      Object.entries(value).forEach(([property, propertyValue]) => {
+        element.style[property] = propertyValue;
       });
     } else if (key.startsWith('on') && typeof value === 'function') {
       // Handle event listeners
       const eventName = key.substring(2).toLowerCase();
       element.addEventListener(eventName, value);
+    } else if (key === 'dataset' && typeof value === 'object') {
+      // Handle data attributes
+      Object.entries(value).forEach(([dataKey, dataValue]) => {
+        element.dataset[dataKey] = dataValue;
+      });
+    } else if (key === 'className') {
+      // Handle className
+      element.className = value;
     } else {
-      // Handle normal attributes
+      // Handle other attributes
       element.setAttribute(key, value);
     }
   });
   
-  // Add children
+  // Append children
   if (children) {
     if (Array.isArray(children)) {
       children.forEach(child => {
-        if (child instanceof HTMLElement) {
-          element.appendChild(child);
-        } else if (child !== null && child !== undefined) {
-          element.appendChild(document.createTextNode(child.toString()));
+        if (child) {
+          if (typeof child === 'string') {
+            element.appendChild(document.createTextNode(child));
+          } else {
+            element.appendChild(child);
+          }
         }
       });
-    } else if (children instanceof HTMLElement) {
+    } else if (typeof children === 'string') {
+      element.textContent = children;
+    } else {
       element.appendChild(children);
-    } else if (children !== null && children !== undefined) {
-      element.appendChild(document.createTextNode(children.toString()));
     }
   }
   
@@ -117,146 +98,259 @@ export function createElement(tag, attributes = {}, children = []) {
 }
 
 /**
- * Show a screen and hide all others
- * @param {string} screenId - The ID of the screen to show
+ * Clear all child elements of a parent
+ * @param {HTMLElement} parent - The parent element
  */
-export function showScreen(screenId) {
-  // Get all screens
-  const screens = document.querySelectorAll('.game-screen');
+export function clearChildren(parent) {
+  if (!parent) return;
   
-  // Hide all screens
-  screens.forEach(screen => {
-    screen.style.display = 'none';
-  });
-  
-  // Show the target screen
-  const targetScreen = getElement(screenId);
-  if (targetScreen) {
-    targetScreen.style.display = 'block';
-    console.log(`Showing screen: ${screenId}`);
-  } else {
-    console.error(`Screen not found: ${screenId}`);
+  while (parent.firstChild) {
+    parent.removeChild(parent.firstChild);
   }
 }
 
 /**
- * Create and return a button with specified attributes
+ * Add a class to an element
+ * @param {HTMLElement} element - The element
+ * @param {string} className - The class to add
+ */
+export function addClass(element, className) {
+  if (!element) return;
+  
+  if (element.classList) {
+    element.classList.add(className);
+  } else {
+    element.className += ' ' + className;
+  }
+}
+
+/**
+ * Remove a class from an element
+ * @param {HTMLElement} element - The element
+ * @param {string} className - The class to remove
+ */
+export function removeClass(element, className) {
+  if (!element) return;
+  
+  if (element.classList) {
+    element.classList.remove(className);
+  } else {
+    element.className = element.className
+      .replace(new RegExp('\\b' + className + '\\b', 'g'), '');
+  }
+}
+
+/**
+ * Toggle a class on an element
+ * @param {HTMLElement} element - The element
+ * @param {string} className - The class to toggle
+ * @param {boolean} force - If true, adds the class; if false, removes the class
+ */
+export function toggleClass(element, className, force) {
+  if (!element) return;
+  
+  if (element.classList) {
+    if (force !== undefined) {
+      element.classList.toggle(className, force);
+    } else {
+      element.classList.toggle(className);
+    }
+  } else {
+    const hasClass = element.className.includes(className);
+    
+    if (force === undefined) {
+      force = !hasClass;
+    }
+    
+    if (force && !hasClass) {
+      addClass(element, className);
+    } else if (!force && hasClass) {
+      removeClass(element, className);
+    }
+  }
+}
+
+/**
+ * Check if an element has a class
+ * @param {HTMLElement} element - The element
+ * @param {string} className - The class to check
+ * @returns {boolean} Whether the element has the class
+ */
+export function hasClass(element, className) {
+  if (!element) return false;
+  
+  if (element.classList) {
+    return element.classList.contains(className);
+  } else {
+    return new RegExp('\\b' + className + '\\b').test(element.className);
+  }
+}
+
+/**
+ * Set text content safely
+ * @param {HTMLElement} element - The element
+ * @param {string} text - The text to set
+ */
+export function setText(element, text) {
+  if (!element) return;
+  
+  if (element.textContent !== undefined) {
+    element.textContent = text;
+  } else {
+    element.innerText = text;
+  }
+}
+
+/**
+ * Set HTML content safely
+ * @param {HTMLElement} element - The element
+ * @param {string} html - The HTML to set
+ */
+export function setHTML(element, html) {
+  if (!element) return;
+  
+  element.innerHTML = html;
+}
+
+/**
+ * Show an element
+ * @param {HTMLElement} element - The element
+ * @param {string} displayType - The display type to use (default: block)
+ */
+export function showElement(element, displayType = 'block') {
+  if (!element) return;
+  
+  element.style.display = displayType;
+}
+
+/**
+ * Hide an element
+ * @param {HTMLElement} element - The element
+ */
+export function hideElement(element) {
+  if (!element) return;
+  
+  element.style.display = 'none';
+}
+
+/**
+ * Toggle an element's visibility
+ * @param {HTMLElement} element - The element
+ * @param {string} displayType - The display type to use when showing (default: block)
+ */
+export function toggleElement(element, displayType = 'block') {
+  if (!element) return;
+  
+  if (element.style.display === 'none') {
+    element.style.display = displayType;
+  } else {
+    element.style.display = 'none';
+  }
+}
+
+/**
+ * Create a button element
  * @param {string} text - Button text
  * @param {Function} onClick - Click handler
- * @param {string} className - Additional CSS class(es)
- * @returns {HTMLButtonElement} The created button
+ * @param {Object} attributes - Additional attributes
+ * @returns {HTMLButtonElement} The button element
  */
-export function createButton(text, onClick, className = '') {
+export function createButton(text, onClick, attributes = {}) {
   return createElement('button', {
-    className: `game-button ${className}`.trim(),
+    ...attributes,
     onclick: onClick
   }, text);
 }
 
 /**
- * Clear all child elements of a parent
- * @param {HTMLElement|string} parent - The parent element or its ID
+ * Find the closest ancestor matching a selector
+ * @param {HTMLElement} element - The starting element
+ * @param {string} selector - The selector to match
+ * @returns {HTMLElement|null} The found ancestor or null
  */
-export function clearChildren(parent) {
-  const parentElement = getElement(parent);
-  if (!parentElement) {
-    console.error(`Parent element not found: ${parent}`);
-    return;
+export function closest(element, selector) {
+  if (!element) return null;
+  
+  // Use native closest if available
+  if (element.closest) {
+    return element.closest(selector);
   }
   
-  while (parentElement.firstChild) {
-    parentElement.removeChild(parentElement.firstChild);
-  }
-}
-
-/**
- * Append multiple children to a parent element
- * @param {HTMLElement|string} parent - The parent element or its ID
- * @param {Array} children - Array of child elements to append
- */
-export function appendChildren(parent, children) {
-  const parentElement = getElement(parent);
-  if (!parentElement) {
-    console.error(`Parent element not found: ${parent}`);
-    return;
-  }
+  // Polyfill for closest
+  let current = element;
   
-  children.forEach(child => {
-    if (child instanceof HTMLElement) {
-      parentElement.appendChild(child);
-    } else if (child !== null && child !== undefined) {
-      parentElement.appendChild(document.createTextNode(child.toString()));
+  while (current) {
+    if (matches(current, selector)) {
+      return current;
     }
-  });
-}
-
-/**
- * Set text content of an element
- * @param {HTMLElement|string} element - The element or its ID
- * @param {string} text - The text to set
- */
-export function setText(element, text) {
-  const targetElement = getElement(element);
-  if (!targetElement) {
-    console.error(`Element not found: ${element}`);
-    return;
+    current = current.parentElement;
   }
   
-  targetElement.textContent = text;
+  return null;
 }
 
 /**
- * Add an event listener to an element with error handling
- * @param {HTMLElement|string} element - The element or its ID
- * @param {string} event - The event name
- * @param {Function} handler - The event handler
- * @returns {Function} A function to remove the event listener
+ * Check if an element matches a selector
+ * @param {HTMLElement} element - The element
+ * @param {string} selector - The selector to match
+ * @returns {boolean} Whether the element matches the selector
  */
-export function addEvent(element, event, handler) {
-  const targetElement = getElement(element);
-  if (!targetElement) {
-    console.error(`Element not found: ${element}`);
-    return () => {};
+export function matches(element, selector) {
+  if (!element) return false;
+  
+  // Use native matches if available
+  const matchesMethod = element.matches ||
+    element.webkitMatchesSelector ||
+    element.mozMatchesSelector ||
+    element.msMatchesSelector;
+  
+  if (matchesMethod) {
+    return matchesMethod.call(element, selector);
   }
   
-  targetElement.addEventListener(event, handler);
-  
-  // Return a function to remove the event listener
-  return () => {
-    targetElement.removeEventListener(event, handler);
-  };
+  // Fallback (less efficient)
+  const elements = document.querySelectorAll(selector);
+  return Array.from(elements).includes(element);
 }
 
 /**
- * Create a simple progress bar element
- * @param {number} value - Current value
- * @param {number} max - Maximum value
- * @param {string} barColor - Color of the progress bar
- * @param {string} id - ID for the progress container
- * @returns {HTMLElement} The progress bar container
+ * Find parent element
+ * @param {HTMLElement} element - The element
+ * @returns {HTMLElement|null} The parent element or null
  */
-export function createProgressBar(value, max, barColor = '#4caf50', id = '') {
-  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+export function getParent(element) {
+  if (!element) return null;
+  return element.parentElement;
+}
+
+/**
+ * Create and return a document fragment
+ * @param {Array} children - Child elements or strings
+ * @returns {DocumentFragment} The document fragment
+ */
+export function createFragment(children = []) {
+  const fragment = document.createDocumentFragment();
   
-  const container = createElement('div', {
-    className: 'progress-container',
-    id: id || `progress-${Date.now()}`
-  });
+  if (Array.isArray(children)) {
+    children.forEach(child => {
+      if (typeof child === 'string') {
+        const textNode = document.createTextNode(child);
+        fragment.appendChild(textNode);
+      } else if (child instanceof HTMLElement) {
+        fragment.appendChild(child);
+      }
+    });
+  }
   
-  const bar = createElement('div', {
-    className: 'progress-bar',
-    style: {
-      width: `${percentage}%`,
-      backgroundColor: barColor
-    }
-  });
-  
-  const label = createElement('div', {
-    className: 'progress-label'
-  }, `${Math.round(value)}/${max}`);
-  
-  container.appendChild(bar);
-  container.appendChild(label);
-  
-  return container;
+  return fragment;
+}
+
+/**
+ * Create a div element with a class name
+ * @param {string} className - CSS class name
+ * @param {Array|string} children - Child elements or text
+ * @returns {HTMLDivElement} The div element
+ */
+export function createDiv(className, children = []) {
+  return createElement('div', { className }, children);
 }
