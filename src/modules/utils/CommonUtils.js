@@ -1,29 +1,26 @@
 /**
  * @module CommonUtils
- * General utility functions used throughout the application
+ * Common utility functions used throughout the application
  */
 
 /**
- * Gets a random item from an array
+ * Get a random item from an array
  * @param {Array} array - The array to select from
- * @returns {*|null} A random item from the array or null if array is empty
+ * @returns {*} A random item from the array
  */
 export function getRandomItem(array) {
-  if (!array || array.length === 0) return null;
+  if (!array || array.length === 0) {
+    return null;
+  }
   return array[Math.floor(Math.random() * array.length)];
 }
 
 /**
- * Shuffles an array using Fisher-Yates algorithm
+ * Shuffle an array using Fisher-Yates algorithm
  * @param {Array} array - The array to shuffle
- * @returns {Array} A new shuffled array (original not modified)
+ * @returns {Array} The shuffled array
  */
 export function shuffleArray(array) {
-  if (!array || !Array.isArray(array)) {
-    console.warn('Attempted to shuffle non-array:', array);
-    return [];
-  }
-  
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -33,7 +30,7 @@ export function shuffleArray(array) {
 }
 
 /**
- * Clamps a value between min and max
+ * Clamp a value between min and max
  * @param {number} value - The value to clamp
  * @param {number} min - The minimum value
  * @param {number} max - The maximum value
@@ -44,7 +41,7 @@ export function clamp(value, min, max) {
 }
 
 /**
- * Generates a random integer between min and max (inclusive)
+ * Generate a random integer between min and max (inclusive)
  * @param {number} min - The minimum value
  * @param {number} max - The maximum value
  * @returns {number} A random integer
@@ -56,49 +53,88 @@ export function getRandomInt(min, max) {
 }
 
 /**
- * Creates a deep copy of an object
+ * Create a deep copy of an object
  * @param {Object} obj - The object to copy
- * @returns {Object|null} A deep copy of the object or null if there's an error
+ * @returns {Object} A deep copy of the object
  */
 export function deepCopy(obj) {
-  try {
-    return JSON.parse(JSON.stringify(obj));
-  } catch (e) {
-    console.error('Error creating deep copy:', e);
-    return null;
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
   }
+  
+  // Handle Date
+  if (obj instanceof Date) {
+    return new Date(obj.getTime());
+  }
+  
+  // Handle Array
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepCopy(item));
+  }
+  
+  // Handle Object
+  const copy = {};
+  Object.keys(obj).forEach(key => {
+    copy[key] = deepCopy(obj[key]);
+  });
+  
+  return copy;
 }
 
 /**
- * Formats a value as a percentage width string
+ * Format a progress bar width
  * @param {number} value - The current value
  * @param {number} max - The maximum value
  * @returns {string} CSS width value as a percentage
  */
 export function formatProgressWidth(value, max) {
-  const percentage = (value / max) * 100;
-  return `${Math.min(100, Math.max(0, percentage))}%`;
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  return `${percentage}%`;
 }
 
 /**
- * Debounces a function call
- * @param {Function} func - The function to debounce
- * @param {number} wait - The debounce delay in milliseconds
- * @returns {Function} The debounced function
+ * Calculate percentage
+ * @param {number} value - The current value
+ * @param {number} max - The maximum value
+ * @returns {number} The percentage (0-100)
  */
-export function debounce(func, wait) {
-  let timeout;
-  return function(...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), wait);
-  };
+export function calculatePercentage(value, max) {
+  return Math.min(100, Math.max(0, (value / max) * 100));
 }
 
 /**
- * Generates a unique ID
+ * Generate a unique ID
  * @returns {string} A unique ID
  */
 export function generateId() {
-  return `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+/**
+ * Delay execution for a specified time
+ * @param {number} ms - The time to delay in milliseconds
+ * @returns {Promise} A promise that resolves after the delay
+ */
+export function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if an object is empty
+ * @param {Object} obj - The object to check
+ * @returns {boolean} Whether the object is empty
+ */
+export function isEmptyObject(obj) {
+  return Object.keys(obj).length === 0;
+}
+
+/**
+ * Get the plural form of a word based on count
+ * @param {string} singular - The singular form of the word
+ * @param {string} plural - The plural form of the word
+ * @param {number} count - The count to base the form on
+ * @returns {string} The appropriate form of the word
+ */
+export function pluralize(singular, plural, count) {
+  return count === 1 ? singular : plural;
 }
