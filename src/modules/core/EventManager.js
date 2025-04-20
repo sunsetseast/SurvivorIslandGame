@@ -1,167 +1,200 @@
 /**
  * @module EventManager
- * A pub-sub event system for communication between game components
+ * Centralized event system using the Publish-Subscribe pattern
  */
 
-class EventManager {
-  constructor() {
-    this.events = {};
-    this.middleware = [];
-  }
-  
-  /**
-   * Subscribes to an event
-   * @param {string} event - The event name
-   * @param {Function} callback - The callback function
-   * @returns {Function} Unsubscribe function
-   */
-  subscribe(event, callback) {
-    // Create event array if it doesn't exist
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    
-    // Add callback to event array
-    this.events[event].push(callback);
-    
-    // Return unsubscribe function
-    return () => {
-      this.events[event] = this.events[event].filter(cb => cb !== callback);
-      
-      // Clean up empty event arrays
-      if (this.events[event].length === 0) {
-        delete this.events[event];
-      }
-    };
-  }
-  
-  /**
-   * Publishes an event with data
-   * @param {string} event - The event name
-   * @param {*} data - The data to pass to subscribers
-   */
-  publish(event, data) {
-    // Process through middleware first
-    const processedData = this.applyMiddleware(event, data);
-    
-    // Skip if no subscribers
-    if (!this.events[event]) {
-      return;
-    }
-    
-    // Call each subscriber
-    this.events[event].forEach(callback => {
-      try {
-        callback(processedData);
-      } catch (error) {
-        console.error(`Error in event handler for "${event}":`, error);
-      }
-    });
-  }
-  
-  /**
-   * Adds middleware to process events before they reach subscribers
-   * @param {Function} middlewareFn - Function(event, data) that returns modified data
-   */
-  addMiddleware(middlewareFn) {
-    this.middleware.push(middlewareFn);
-  }
-  
-  /**
-   * Applies all middleware to the event data
-   * @param {string} event - The event name
-   * @param {*} data - The data to process
-   * @returns {*} The processed data
-   * @private
-   */
-  applyMiddleware(event, data) {
-    return this.middleware.reduce((acc, mw) => {
-      try {
-        return mw(event, acc);
-      } catch (error) {
-        console.error(`Error in middleware for "${event}":`, error);
-        return acc;
-      }
-    }, data);
-  }
-  
-  /**
-   * Removes all subscribers for an event
-   * @param {string} event - The event name
-   */
-  clearEvent(event) {
-    delete this.events[event];
-  }
-  
-  /**
-   * Removes all subscribers for all events
-   */
-  clearAllEvents() {
-    this.events = {};
-  }
-  
-  /**
-   * Logs all current event subscribers (for debugging)
-   */
-  logSubscribers() {
-    console.log('Current event subscribers:');
-    Object.entries(this.events).forEach(([event, callbacks]) => {
-      console.log(`${event}: ${callbacks.length} subscribers`);
-    });
-  }
-}
-
-// Create and export a singleton instance
-const eventManager = new EventManager();
-export default eventManager;
-
-// Also export event names as constants for better type checking and autocomplete
+// Define game events to ensure consistency in event naming
 export const GameEvents = {
-  // Game state events
+  // Core events
   GAME_INITIALIZED: 'game:initialized',
   GAME_STARTED: 'game:started',
-  GAME_OVER: 'game:over',
   GAME_SAVED: 'game:saved',
   GAME_LOADED: 'game:loaded',
+  GAME_OVER: 'game:over',
   
-  // Phase/screen change events
-  SCREEN_CHANGED: 'screen:changed',
+  // Phase events
   PHASE_CHANGED: 'phase:changed',
   DAY_ADVANCED: 'day:advanced',
   
-  // Player events
-  CHARACTER_SELECTED: 'player:characterSelected',
-  PLAYER_ACTION: 'player:action',
+  // Screen events
+  SCREEN_CHANGED: 'screen:changed',
+  SCREEN_REFRESHED: 'screen:refreshed',
+  DIALOG_SHOWN: 'dialog:shown',
+  DIALOG_CLOSED: 'dialog:closed',
+  
+  // Character events
+  CHARACTER_SELECTED: 'character:selected',
   PLAYER_HEALTH_CHANGED: 'player:healthChanged',
   
   // Tribe events
   TRIBES_CREATED: 'tribes:created',
   TRIBES_MERGED: 'tribes:merged',
   TRIBE_RESOURCES_CHANGED: 'tribe:resourcesChanged',
-  
-  // Relationship events
-  RELATIONSHIP_CHANGED: 'relationship:changed',
-  ALLIANCE_FORMED: 'alliance:formed',
-  ALLIANCE_BROKEN: 'alliance:broken',
+  TRIBE_IMMUNITY_CHANGED: 'tribe:immunityChanged',
   
   // Challenge events
   CHALLENGE_STARTED: 'challenge:started',
   CHALLENGE_COMPLETED: 'challenge:completed',
-  IMMUNITY_GRANTED: 'immunity:granted',
+  IMMUNITY_WON: 'immunity:won',
   
   // Tribal council events
-  VOTE_CAST: 'tribalCouncil:voteCast',
-  PLAYER_ELIMINATED: 'tribalCouncil:playerEliminated',
-  IDOL_PLAYED: 'tribalCouncil:idolPlayed',
+  TRIBAL_COUNCIL_STARTED: 'tribalCouncil:started',
+  VOTE_CAST: 'vote:cast',
+  IDOL_PLAYED: 'idol:played',
+  SURVIVOR_ELIMINATED: 'survivor:eliminated',
   
-  // Resource events
-  ENERGY_CHANGED: 'resource:energyChanged',
-  RESOURCE_COLLECTED: 'resource:collected',
-  RESOURCE_USED: 'resource:used',
+  // Relationship events
+  RELATIONSHIP_CHANGED: 'relationship:changed',
   
-  // UI events
-  UI_MODAL_OPENED: 'ui:modalOpened',
-  UI_MODAL_CLOSED: 'ui:modalClosed',
-  UI_DIALOGUE_SHOWN: 'ui:dialogueShown',
-  UI_DIALOGUE_HIDDEN: 'ui:dialogueHidden'
+  // Alliance events
+  ALLIANCE_FORMED: 'alliance:formed',
+  ALLIANCE_DISBANDED: 'alliance:disbanded',
+  ALLIANCE_MEMBER_ADDED: 'alliance:memberAdded',
+  ALLIANCE_MEMBER_REMOVED: 'alliance:memberRemoved'
 };
+
+class EventManager {
+  constructor() {
+    this.events = new Map();
+    this.debugMode = false;
+  }
+  
+  /**
+   * Enable or disable debug logging
+   * @param {boolean} enabled - Whether to enable debug mode
+   */
+  setDebugMode(enabled) {
+    this.debugMode = enabled;
+  }
+  
+  /**
+   * Subscribe to an event
+   * @param {string} eventName - The name of the event
+   * @param {Function} callback - The callback function to execute when the event is published
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(eventName, callback) {
+    if (!this.events.has(eventName)) {
+      this.events.set(eventName, []);
+    }
+    
+    const handlers = this.events.get(eventName);
+    handlers.push(callback);
+    
+    // Return unsubscribe function
+    return () => {
+      this.unsubscribe(eventName, callback);
+    };
+  }
+  
+  /**
+   * Unsubscribe from an event
+   * @param {string} eventName - The name of the event
+   * @param {Function} callback - The callback function to remove
+   * @returns {boolean} Whether the unsubscribe was successful
+   */
+  unsubscribe(eventName, callback) {
+    if (!this.events.has(eventName)) {
+      return false;
+    }
+    
+    const handlers = this.events.get(eventName);
+    const index = handlers.indexOf(callback);
+    
+    if (index === -1) {
+      return false;
+    }
+    
+    handlers.splice(index, 1);
+    
+    // If no more handlers, remove the event
+    if (handlers.length === 0) {
+      this.events.delete(eventName);
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Publish an event
+   * @param {string} eventName - The name of the event
+   * @param {Object} data - The data to pass to the callback functions
+   */
+  publish(eventName, data = {}) {
+    if (this.debugMode) {
+      console.log(`Event published: ${eventName}`, data);
+    }
+    
+    if (!this.events.has(eventName)) {
+      return;
+    }
+    
+    const handlers = this.events.get(eventName);
+    
+    // Execute each handler with the event data
+    handlers.forEach(handler => {
+      try {
+        handler(data);
+      } catch (error) {
+        console.error(`Error in event handler for ${eventName}:`, error);
+      }
+    });
+  }
+  
+  /**
+   * Subscribe to an event once (auto-unsubscribe after first trigger)
+   * @param {string} eventName - The name of the event
+   * @param {Function} callback - The callback function to execute when the event is published
+   * @returns {Function} Unsubscribe function
+   */
+  once(eventName, callback) {
+    const wrappedCallback = (data) => {
+      // Unsubscribe first
+      this.unsubscribe(eventName, wrappedCallback);
+      // Then call the original callback
+      callback(data);
+    };
+    
+    return this.subscribe(eventName, wrappedCallback);
+  }
+  
+  /**
+   * Remove all event listeners
+   */
+  clear() {
+    this.events.clear();
+  }
+  
+  /**
+   * Remove all event listeners for a specific event
+   * @param {string} eventName - The name of the event
+   */
+  clearEvent(eventName) {
+    this.events.delete(eventName);
+  }
+  
+  /**
+   * Get count of subscribers for a specific event
+   * @param {string} eventName - The name of the event
+   * @returns {number} The number of subscribers
+   */
+  getSubscriberCount(eventName) {
+    if (!this.events.has(eventName)) {
+      return 0;
+    }
+    
+    return this.events.get(eventName).length;
+  }
+  
+  /**
+   * Get all registered events
+   * @returns {Array} Array of event names
+   */
+  getEvents() {
+    return Array.from(this.events.keys());
+  }
+}
+
+// Create and export singleton instance
+const eventManager = new EventManager();
+export default eventManager;
