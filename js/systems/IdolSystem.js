@@ -35,7 +35,7 @@ class IdolSystem {
             hidingSpot: hidingSpots[Math.floor(Math.random() * hidingSpots.length)]
         };
         
-        console.log("Idol hidden in: " + JSON.stringify(this.idolLocation));
+        console.log("Idol hidden in location:", this.idolLocation.location, "hiding spot:", this.idolLocation.hidingSpot);
     }
     
     /**
@@ -43,7 +43,7 @@ class IdolSystem {
      */
     showIdolSearch() {
         console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-        console.log("Current idol location is: " + JSON.stringify(this.idolLocation));
+        console.log("Current idol location is - location:", this.idolLocation?.location, "hiding spot:", this.idolLocation?.hidingSpot);
         
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
@@ -258,7 +258,7 @@ class IdolSystem {
         }
         
         console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
-        console.log(`Current idol location: ${JSON.stringify(this.idolLocation)}`);
+        console.log(`Current idol location - location: ${this.idolLocation?.location}, hiding spot: ${this.idolLocation?.hidingSpot}`);
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;

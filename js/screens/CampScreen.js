@@ -404,13 +404,33 @@ window.CampScreen = {
         if (!locationButtonsContainer) {
             console.error("Location buttons container not found!");
             
-            // Let's try with a delay to ensure DOM is fully loaded
+            // If the container doesn't exist, let's create it
+            const campLocations = document.querySelector('.camp-locations');
+            if (campLocations) {
+                console.log("Creating location-buttons container");
+                const newContainer = document.createElement('div');
+                newContainer.id = 'location-buttons';
+                newContainer.style.display = 'flex';
+                newContainer.style.flexWrap = 'wrap';
+                newContainer.style.gap = '10px';
+                newContainer.style.marginTop = '10px';
+                campLocations.appendChild(newContainer);
+                
+                // Now use the newly created container
+                this._createLocationButtonsImpl(newContainer);
+                return;
+            }
+            
+            // If we can't find the camp-locations section, retry with a delay
             setTimeout(() => {
                 const retryContainer = document.getElementById('location-buttons');
                 console.log("Retry finding location-buttons container:", retryContainer);
                 if (retryContainer) {
                     console.log("Found container on retry, continuing with location buttons creation");
                     this._createLocationButtonsImpl(retryContainer);
+                } else {
+                    // Last resort - create the container structure from scratch
+                    this.createLocationSection();
                 }
             }, 500);
             return;
@@ -654,6 +674,84 @@ window.CampScreen = {
         }
         
         this.selectedLocation = null;
+    },
+    
+    /**
+     * Create location section from scratch if it doesn't exist
+     */
+    createLocationSection() {
+        console.log("Creating entire location section from scratch");
+        const campScreen = document.getElementById('camp-screen');
+        
+        if (!campScreen) {
+            console.error("Cannot find camp-screen element");
+            return;
+        }
+        
+        // Check if the section already exists
+        if (document.querySelector('.camp-locations')) {
+            console.log("Camp locations section already exists");
+            return;
+        }
+        
+        // Create the main locations section
+        const locationsSection = document.createElement('div');
+        locationsSection.className = 'camp-locations';
+        
+        // Create the heading
+        const heading = document.createElement('h3');
+        heading.textContent = 'Locations';
+        locationsSection.appendChild(heading);
+        
+        // Create the buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.id = 'location-buttons';
+        buttonsContainer.style.display = 'flex';
+        buttonsContainer.style.flexWrap = 'wrap';
+        buttonsContainer.style.gap = '10px';
+        buttonsContainer.style.marginTop = '10px';
+        locationsSection.appendChild(buttonsContainer);
+        
+        // Create the location actions container
+        const actionsContainer = document.createElement('div');
+        actionsContainer.id = 'location-actions';
+        actionsContainer.className = 'hidden';
+        
+        // Create location name heading
+        const locationName = document.createElement('h3');
+        locationName.id = 'location-name';
+        actionsContainer.appendChild(locationName);
+        
+        // Create location description
+        const locationDesc = document.createElement('p');
+        locationDesc.id = 'location-description';
+        actionsContainer.appendChild(locationDesc);
+        
+        // Create action buttons container
+        const actionButtons = document.createElement('div');
+        actionButtons.id = 'action-buttons';
+        actionsContainer.appendChild(actionButtons);
+        
+        // Create back button
+        const backButton = document.createElement('button');
+        backButton.id = 'back-to-locations-button';
+        backButton.className = 'small-button';
+        backButton.textContent = 'Back';
+        backButton.onclick = () => this.hideLocationActions();
+        actionsContainer.appendChild(backButton);
+        
+        // Add everything to the camp screen before the camp menu
+        const campMenu = document.querySelector('.camp-menu');
+        if (campMenu) {
+            campScreen.insertBefore(locationsSection, campMenu);
+            campScreen.insertBefore(actionsContainer, campMenu);
+        } else {
+            campScreen.appendChild(locationsSection);
+            campScreen.appendChild(actionsContainer);
+        }
+        
+        // Now that we've created the containers, populate the location buttons
+        this._createLocationButtonsImpl(buttonsContainer);
     },
     
     /**
