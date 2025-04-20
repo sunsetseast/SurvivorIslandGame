@@ -1,36 +1,22 @@
 /**
  * @module CharacterSelectionScreen
- * Screen for selecting a survivor character
+ * Character selection screen for the game
  */
 
 import { getElement, createElement, clearChildren } from '../utils/DOMUtils.js';
-import { getRandomInt, shuffleArray } from '../utils/CommonUtils.js';
-import { GameManager } from '../core/GameManager.js';
+import { gameManager } from '../core/GameManager.js';
 import eventManager, { GameEvents } from '../core/EventManager.js';
-
-// Character attributes
-const ATTRIBUTES = {
-  PHYSICAL: 'physical',
-  MENTAL: 'mental',
-  SOCIAL: 'social'
-};
-
-// Character archetypes and default stats
-const ARCHETYPES = {
-  ATHLETE: { physical: 8, mental: 5, social: 6 },
-  STRATEGIST: { physical: 4, mental: 9, social: 6 },
-  SOCIAL_BUTTERFLY: { physical: 5, mental: 6, social: 8 },
-  OUTDOORSMAN: { physical: 7, mental: 7, social: 5 },
-  UNDERDOG: { physical: 6, mental: 6, social: 7 }
-};
+import { GameData } from '../data/index.js';
+import { shuffleArray } from '../utils/CommonUtils.js';
 
 const CharacterSelectionScreen = {
   /**
    * Initialize the screen
    */
   initialize() {
-    // Any one-time initialization code
     console.log('CharacterSelectionScreen initialized');
+    this.selectedCharacter = null;
+    this.availableSurvivors = [];
   },
   
   /**
@@ -53,10 +39,11 @@ const CharacterSelectionScreen = {
       style: {
         fontSize: '2rem',
         color: '#fff',
+        textAlign: 'center',
         marginBottom: '1.5rem',
-        textAlign: 'center'
+        textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
       }
-    }, 'Select Your Survivor');
+    }, 'Choose Your Character');
     
     // Create subtitle
     const subtitle = createElement('p', {
@@ -64,79 +51,210 @@ const CharacterSelectionScreen = {
       style: {
         fontSize: '1.1rem',
         color: '#ddd',
-        marginBottom: '2rem',
-        textAlign: 'center'
+        textAlign: 'center',
+        marginBottom: '2rem'
       }
-    }, 'Choose the survivor you want to play as in this adventure.');
+    }, 'Select the survivor that will represent you in the game');
     
-    // Create character selection container
-    const charactersContainer = createElement('div', {
-      className: 'characters-container',
+    // Create search/filter controls
+    const filterContainer = createElement('div', {
+      className: 'filter-container',
       style: {
         display: 'flex',
-        flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '20px',
+        alignItems: 'center',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+        flexWrap: 'wrap'
+      }
+    });
+    
+    // Search input
+    const searchContainer = createElement('div', {
+      className: 'search-container',
+      style: {
+        position: 'relative',
+        width: '250px'
+      }
+    });
+    
+    const searchInput = createElement('input', {
+      id: 'character-search',
+      type: 'text',
+      placeholder: 'Search by name...',
+      style: {
+        width: '100%',
+        padding: '0.6rem 0.8rem',
+        paddingLeft: '2rem',
+        backgroundColor: 'rgba(30, 30, 30, 0.7)',
+        color: '#fff',
+        border: '1px solid #555',
+        borderRadius: '4px'
+      },
+      oninput: (e) => {
+        this._filterSurvivors(e.target.value, filterSelect.value);
+      }
+    });
+    
+    // Search icon
+    const searchIcon = createElement('span', {
+      className: 'search-icon',
+      style: {
+        position: 'absolute',
+        left: '0.6rem',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        color: '#aaa'
+      }
+    }, '🔍');
+    
+    searchContainer.appendChild(searchIcon);
+    searchContainer.appendChild(searchInput);
+    
+    // Filter dropdown
+    const filterSelect = createElement('select', {
+      id: 'character-filter',
+      style: {
+        padding: '0.6rem 0.8rem',
+        backgroundColor: 'rgba(30, 30, 30, 0.7)',
+        color: '#fff',
+        border: '1px solid #555',
+        borderRadius: '4px'
+      },
+      onchange: (e) => {
+        this._filterSurvivors(searchInput.value, e.target.value);
+      }
+    });
+    
+    // Add filter options
+    const filterOptions = [
+      { value: 'all', label: 'All Characters' },
+      { value: 'male', label: 'Male Characters' },
+      { value: 'female', label: 'Female Characters' },
+      { value: 'physical', label: 'Physical Strength' },
+      { value: 'mental', label: 'Mental Strength' },
+      { value: 'social', label: 'Social Skills' }
+    ];
+    
+    filterOptions.forEach(option => {
+      const optionElement = createElement('option', {
+        value: option.value
+      }, option.label);
+      filterSelect.appendChild(optionElement);
+    });
+    
+    // Random button
+    const randomButton = createElement('button', {
+      className: 'random-button',
+      style: {
+        padding: '0.6rem 1rem',
+        backgroundColor: '#9c27b0',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer'
+      },
+      onclick: () => {
+        this._selectRandomCharacter();
+      }
+    }, 'Random');
+    
+    filterContainer.appendChild(searchContainer);
+    filterContainer.appendChild(filterSelect);
+    filterContainer.appendChild(randomButton);
+    
+    // Create characters grid
+    const charactersGrid = createElement('div', {
+      className: 'characters-grid',
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+        gap: '1.5rem',
         marginBottom: '2rem'
       }
     });
     
-    // Get survivors data from the global variable or create placeholder data
-    const survivorsData = window.survivors || this._createPlaceholderSurvivors();
+    // Get survivors from game data
+    this.availableSurvivors = [...GameData.getSurvivors()];
     
     // Create character cards
-    survivorsData.forEach(survivor => {
+    this.availableSurvivors.forEach(survivor => {
       const card = this._createCharacterCard(survivor);
-      charactersContainer.appendChild(card);
+      charactersGrid.appendChild(card);
     });
     
-    // Create randomize button
-    const randomizeButton = createElement('button', {
-      className: 'secondary-button',
+    // Create character details panel (initially hidden)
+    const detailsPanel = createElement('div', {
+      id: 'character-details-panel',
       style: {
-        marginBottom: '1.5rem'
-      },
-      onclick: () => {
-        // Randomly select a character
-        const randomIndex = getRandomInt(0, survivorsData.length - 1);
-        const randomSurvivor = survivorsData[randomIndex];
-        GameManager.selectCharacter(randomSurvivor);
+        backgroundColor: 'rgba(30, 30, 30, 0.9)',
+        borderRadius: '8px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        display: 'none'
       }
-    }, 'Randomize Selection');
+    });
     
-    // Create back button
-    const backButton = createElement('button', {
-      className: 'secondary-button',
-      style: {
-        marginRight: '1rem'
-      },
-      onclick: () => {
-        if (window.showScreen) {
-          window.showScreen('welcome-screen');
-        } else if (GameManager.setGameState) {
-          GameManager.setGameState('welcome');
-        }
-      }
-    }, 'Back');
-    
-    // Create button container
-    const buttonContainer = createElement('div', {
-      className: 'button-container',
+    // Create action buttons
+    const actionButtons = createElement('div', {
+      className: 'action-buttons',
       style: {
         display: 'flex',
         justifyContent: 'center',
-        gap: '15px'
+        gap: '1rem',
+        marginTop: '2rem'
       }
     });
     
-    buttonContainer.appendChild(backButton);
-    buttonContainer.appendChild(randomizeButton);
+    // Back button
+    const backButton = createElement('button', {
+      className: 'back-button',
+      style: {
+        padding: '0.8rem 1.5rem',
+        backgroundColor: '#607d8b',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '1rem'
+      },
+      onclick: () => {
+        gameManager.setGameState('welcome');
+      }
+    }, 'Back');
     
-    // Add elements to the screen
+    // Confirm button (initially disabled)
+    const confirmButton = createElement('button', {
+      id: 'confirm-character-button',
+      className: 'confirm-button',
+      style: {
+        padding: '0.8rem 1.5rem',
+        backgroundColor: '#4caf50',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '1rem',
+        opacity: '0.6',
+        pointerEvents: 'none'
+      },
+      onclick: () => {
+        if (this.selectedCharacter) {
+          gameManager.selectCharacter(this.selectedCharacter);
+        }
+      }
+    }, 'Confirm');
+    
+    actionButtons.appendChild(backButton);
+    actionButtons.appendChild(confirmButton);
+    
+    // Add elements to screen
     characterSelectionScreen.appendChild(title);
     characterSelectionScreen.appendChild(subtitle);
-    characterSelectionScreen.appendChild(charactersContainer);
-    characterSelectionScreen.appendChild(buttonContainer);
+    characterSelectionScreen.appendChild(filterContainer);
+    characterSelectionScreen.appendChild(charactersGrid);
+    characterSelectionScreen.appendChild(detailsPanel);
+    characterSelectionScreen.appendChild(actionButtons);
     
     // Publish screen setup event
     eventManager.publish(GameEvents.SCREEN_CHANGED, {
@@ -146,7 +264,7 @@ const CharacterSelectionScreen = {
   },
   
   /**
-   * Create a character card element
+   * Create a character card
    * @param {Object} survivor - Survivor data
    * @returns {HTMLElement} Character card element
    * @private
@@ -154,330 +272,529 @@ const CharacterSelectionScreen = {
   _createCharacterCard(survivor) {
     const card = createElement('div', {
       className: 'character-card',
+      dataset: {
+        id: survivor.id,
+        gender: survivor.gender
+      },
       style: {
-        width: '180px',
-        backgroundColor: 'rgba(30, 30, 30, 0.7)',
+        backgroundColor: 'rgba(40, 40, 40, 0.7)',
         borderRadius: '8px',
-        padding: '15px',
+        padding: '1rem',
         cursor: 'pointer',
-        transition: 'transform 0.2s, background-color 0.2s',
+        transition: 'all 0.2s',
+        border: '2px solid transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center'
       },
       onmouseover: (e) => {
-        e.currentTarget.style.transform = 'scale(1.05)';
-        e.currentTarget.style.backgroundColor = 'rgba(40, 40, 40, 0.9)';
+        e.currentTarget.style.transform = 'translateY(-5px)';
+        e.currentTarget.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+        e.currentTarget.style.backgroundColor = 'rgba(50, 50, 50, 0.7)';
       },
       onmouseout: (e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-        e.currentTarget.style.backgroundColor = 'rgba(30, 30, 30, 0.7)';
+        if (this.selectedCharacter?.id !== survivor.id) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.backgroundColor = 'rgba(40, 40, 40, 0.7)';
+        }
       },
       onclick: () => {
-        GameManager.selectCharacter(survivor);
+        this._selectCharacter(survivor);
       }
     });
     
-    // Create character avatar
-    const avatar = createElement('div', {
-      className: 'character-avatar',
+    // Avatar
+    const avatarContainer = createElement('div', {
+      className: 'avatar-container',
       style: {
-        width: '100px',
-        height: '100px',
+        width: '80px',
+        height: '80px',
         borderRadius: '50%',
         backgroundColor: '#555',
-        marginBottom: '15px',
-        backgroundImage: survivor.avatarUrl ? `url(${survivor.avatarUrl})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        border: '3px solid #777'
+        marginBottom: '1rem',
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
       }
     });
     
-    // Create character name
+    // Handle avatar
+    if (survivor.avatarUrl) {
+      avatarContainer.style.backgroundImage = `url(${survivor.avatarUrl})`;
+      avatarContainer.style.backgroundSize = 'cover';
+      avatarContainer.style.backgroundPosition = 'center';
+    } else {
+      // Default avatar (first letter of name)
+      const avatarText = createElement('span', {
+        style: {
+          fontSize: '2rem',
+          color: '#fff'
+        }
+      }, survivor.name.charAt(0));
+      avatarContainer.appendChild(avatarText);
+    }
+    
+    // Character name
     const name = createElement('h3', {
-      className: 'character-name',
       style: {
-        margin: '0 0 10px 0',
         color: '#fff',
-        fontSize: '1.2rem',
+        margin: '0 0 0.5rem 0',
         textAlign: 'center'
       }
     }, survivor.name);
     
-    // Create character archetype
-    const archetype = createElement('div', {
-      className: 'character-archetype',
+    // Character brief
+    const brief = createElement('div', {
       style: {
-        color: '#ccc',
+        color: '#ddd',
         fontSize: '0.9rem',
-        marginBottom: '15px',
-        textAlign: 'center'
+        textAlign: 'center',
+        marginBottom: '0.5rem'
       }
-    }, survivor.archetype || this._getArchetypeFromStats(survivor));
+    }, `${survivor.age}, ${survivor.occupation}`);
     
-    // Create stats container
-    const statsContainer = createElement('div', {
-      className: 'character-stats',
+    // Archetype tag
+    const archetype = createElement('div', {
       style: {
-        width: '100%'
+        backgroundColor: 'rgba(255, 152, 0, 0.2)',
+        color: '#ff9800',
+        padding: '0.2rem 0.5rem',
+        borderRadius: '4px',
+        fontSize: '0.8rem',
+        marginBottom: '0.5rem'
+      }
+    }, survivor.archetype);
+    
+    // Attributes mini-preview
+    const attributes = createElement('div', {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginTop: '0.5rem'
       }
     });
     
-    // Create physical stat
-    const physicalStat = this._createStatBar('Physical', survivor.physical || 5);
+    // Physical attribute
+    const physical = createElement('div', {
+      style: {
+        textAlign: 'center',
+        flex: '1'
+      }
+    });
     
-    // Create mental stat
-    const mentalStat = this._createStatBar('Mental', survivor.mental || 5);
+    const physicalLabel = createElement('div', {
+      style: {
+        fontSize: '0.7rem',
+        color: '#aaa',
+        marginBottom: '0.2rem'
+      }
+    }, 'PHY');
     
-    // Create personality stat
-    const personalityStat = this._createStatBar('Social', survivor.personality || 5);
+    const physicalValue = createElement('div', {
+      style: {
+        fontSize: '0.9rem',
+        color: '#ff5722'
+      }
+    }, survivor.physical.toString());
     
-    // Add stats to container
-    statsContainer.appendChild(physicalStat);
-    statsContainer.appendChild(mentalStat);
-    statsContainer.appendChild(personalityStat);
+    physical.appendChild(physicalLabel);
+    physical.appendChild(physicalValue);
     
-    // Add elements to card
-    card.appendChild(avatar);
+    // Mental attribute
+    const mental = createElement('div', {
+      style: {
+        textAlign: 'center',
+        flex: '1'
+      }
+    });
+    
+    const mentalLabel = createElement('div', {
+      style: {
+        fontSize: '0.7rem',
+        color: '#aaa',
+        marginBottom: '0.2rem'
+      }
+    }, 'MNT');
+    
+    const mentalValue = createElement('div', {
+      style: {
+        fontSize: '0.9rem',
+        color: '#2196f3'
+      }
+    }, survivor.mental.toString());
+    
+    mental.appendChild(mentalLabel);
+    mental.appendChild(mentalValue);
+    
+    // Social attribute
+    const social = createElement('div', {
+      style: {
+        textAlign: 'center',
+        flex: '1'
+      }
+    });
+    
+    const socialLabel = createElement('div', {
+      style: {
+        fontSize: '0.7rem',
+        color: '#aaa',
+        marginBottom: '0.2rem'
+      }
+    }, 'SOC');
+    
+    const socialValue = createElement('div', {
+      style: {
+        fontSize: '0.9rem',
+        color: '#4caf50'
+      }
+    }, survivor.personality.toString());
+    
+    social.appendChild(socialLabel);
+    social.appendChild(socialValue);
+    
+    // Add attributes to container
+    attributes.appendChild(physical);
+    attributes.appendChild(mental);
+    attributes.appendChild(social);
+    
+    // Assemble card
+    card.appendChild(avatarContainer);
     card.appendChild(name);
+    card.appendChild(brief);
     card.appendChild(archetype);
-    card.appendChild(statsContainer);
+    card.appendChild(attributes);
     
     return card;
   },
   
   /**
-   * Create a stat bar element
-   * @param {string} label - Stat label
-   * @param {number} value - Stat value
-   * @returns {HTMLElement} Stat bar element
+   * Select a character
+   * @param {Object} survivor - The survivor to select
    * @private
    */
-  _createStatBar(label, value) {
-    const statContainer = createElement('div', {
-      className: 'stat-container',
-      style: {
-        marginBottom: '8px'
+  _selectCharacter(survivor) {
+    this.selectedCharacter = survivor;
+    
+    // Update character cards
+    const cards = document.querySelectorAll('.character-card');
+    cards.forEach(card => {
+      const cardId = parseInt(card.dataset.id, 10);
+      
+      if (cardId === survivor.id) {
+        // Highlight selected card
+        card.style.borderColor = '#ff9800';
+        card.style.transform = 'translateY(-5px)';
+        card.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+        card.style.backgroundColor = 'rgba(50, 50, 50, 0.7)';
+      } else {
+        // Reset other cards
+        card.style.borderColor = 'transparent';
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = 'none';
+        card.style.backgroundColor = 'rgba(40, 40, 40, 0.7)';
       }
     });
     
-    const statLabel = createElement('div', {
-      className: 'stat-label',
+    // Enable confirm button
+    const confirmButton = getElement('confirm-character-button');
+    if (confirmButton) {
+      confirmButton.style.opacity = '1';
+      confirmButton.style.pointerEvents = 'auto';
+    }
+    
+    // Update character details panel
+    this._updateCharacterDetails(survivor);
+  },
+  
+  /**
+   * Update character details panel
+   * @param {Object} survivor - The survivor to display
+   * @private
+   */
+  _updateCharacterDetails(survivor) {
+    const detailsPanel = getElement('character-details-panel');
+    if (!detailsPanel) return;
+    
+    // Clear panel
+    clearChildren(detailsPanel);
+    
+    // Create details layout
+    const detailsLayout = createElement('div', {
       style: {
         display: 'flex',
-        justifyContent: 'space-between',
-        marginBottom: '3px',
-        fontSize: '0.8rem',
-        color: '#ccc'
+        gap: '1.5rem',
+        alignItems: 'flex-start'
       }
     });
     
-    statLabel.appendChild(createElement('span', {}, label));
-    statLabel.appendChild(createElement('span', {}, value.toString()));
-    
-    const statBarContainer = createElement('div', {
-      className: 'stat-bar-container',
+    // Avatar
+    const avatar = createElement('div', {
       style: {
-        width: '100%',
-        height: '6px',
-        backgroundColor: '#444',
-        borderRadius: '3px',
-        overflow: 'hidden'
+        width: '120px',
+        height: '120px',
+        borderRadius: '60px',
+        backgroundColor: '#555',
+        flexShrink: '0',
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
       }
     });
     
-    // Determine color based on value
-    let barColor = '#5c6bc0'; // Default blue
-    if (value >= 8) {
-      barColor = '#4caf50'; // Green for high values
-    } else if (value <= 3) {
-      barColor = '#f44336'; // Red for low values
-    } else if (value <= 5) {
-      barColor = '#ff9800'; // Orange for medium-low values
+    // Handle avatar
+    if (survivor.avatarUrl) {
+      avatar.style.backgroundImage = `url(${survivor.avatarUrl})`;
+      avatar.style.backgroundSize = 'cover';
+      avatar.style.backgroundPosition = 'center';
+    } else {
+      // Default avatar (first letter of name)
+      const avatarText = createElement('span', {
+        style: {
+          fontSize: '3rem',
+          color: '#fff'
+        }
+      }, survivor.name.charAt(0));
+      avatar.appendChild(avatarText);
     }
     
-    const statBar = createElement('div', {
-      className: 'stat-bar',
+    // Info container
+    const infoContainer = createElement('div', {
       style: {
-        width: `${(value / 10) * 100}%`,
-        height: '100%',
-        backgroundColor: barColor
+        flex: '1'
       }
     });
     
-    statBarContainer.appendChild(statBar);
-    statContainer.appendChild(statLabel);
-    statContainer.appendChild(statBarContainer);
+    // Character name
+    const name = createElement('h2', {
+      style: {
+        color: '#fff',
+        margin: '0 0 0.5rem 0'
+      }
+    }, survivor.name);
     
-    return statContainer;
+    // Character details
+    const details = createElement('div', {
+      style: {
+        color: '#ddd',
+        marginBottom: '1rem'
+      }
+    });
+    
+    // Age and occupation
+    const ageOccupation = createElement('div', {
+      style: {
+        marginBottom: '0.3rem'
+      }
+    }, `${survivor.age} years old, ${survivor.occupation}`);
+    
+    // Archetype
+    const archetype = createElement('div', {
+      style: {
+        marginBottom: '0.3rem'
+      }
+    });
+    
+    const archetypeLabel = createElement('span', {
+      style: {
+        color: '#aaa'
+      }
+    }, 'Archetype: ');
+    
+    const archetypeValue = createElement('span', {
+      style: {
+        color: '#ff9800'
+      }
+    }, survivor.archetype);
+    
+    archetype.appendChild(archetypeLabel);
+    archetype.appendChild(archetypeValue);
+    
+    details.appendChild(ageOccupation);
+    details.appendChild(archetype);
+    
+    // Attributes
+    const attributesContainer = createElement('div', {
+      style: {
+        marginTop: '1rem'
+      }
+    });
+    
+    const attributesTitle = createElement('div', {
+      style: {
+        color: '#aaa',
+        marginBottom: '0.5rem',
+        fontSize: '0.9rem'
+      }
+    }, 'ATTRIBUTES');
+    
+    const attributes = createElement('div', {
+      style: {
+        display: 'flex',
+        gap: '1rem'
+      }
+    });
+    
+    // Attribute bars
+    const attributesList = [
+      { name: 'Physical', value: survivor.physical, color: '#ff5722' },
+      { name: 'Mental', value: survivor.mental, color: '#2196f3' },
+      { name: 'Social', value: survivor.personality, color: '#4caf50' }
+    ];
+    
+    attributesList.forEach(attr => {
+      const attrGroup = createElement('div', {
+        style: {
+          flex: '1'
+        }
+      });
+      
+      const attrLabel = createElement('div', {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: '0.3rem'
+        }
+      });
+      
+      const attrName = createElement('span', {
+        style: {
+          color: '#ddd',
+          fontSize: '0.9rem'
+        }
+      }, attr.name);
+      
+      const attrValue = createElement('span', {
+        style: {
+          color: attr.color,
+          fontSize: '0.9rem',
+          fontWeight: 'bold'
+        }
+      }, attr.value.toString());
+      
+      attrLabel.appendChild(attrName);
+      attrLabel.appendChild(attrValue);
+      
+      const attrBarContainer = createElement('div', {
+        style: {
+          width: '100%',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          height: '8px',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }
+      });
+      
+      const attrBar = createElement('div', {
+        style: {
+          width: `${attr.value * 10}%`,
+          backgroundColor: attr.color,
+          height: '100%',
+          borderRadius: '4px'
+        }
+      });
+      
+      attrBarContainer.appendChild(attrBar);
+      attrGroup.appendChild(attrLabel);
+      attrGroup.appendChild(attrBarContainer);
+      attributes.appendChild(attrGroup);
+    });
+    
+    attributesContainer.appendChild(attributesTitle);
+    attributesContainer.appendChild(attributes);
+    
+    // Assemble info container
+    infoContainer.appendChild(name);
+    infoContainer.appendChild(details);
+    infoContainer.appendChild(attributesContainer);
+    
+    // Add to details layout
+    detailsLayout.appendChild(avatar);
+    detailsLayout.appendChild(infoContainer);
+    
+    // Add to panel
+    detailsPanel.appendChild(detailsLayout);
+    
+    // Show panel
+    detailsPanel.style.display = 'block';
   },
   
   /**
-   * Get character archetype from stats
-   * @param {Object} survivor - Survivor data
-   * @returns {string} Archetype name
+   * Filter survivors based on search term and filter
+   * @param {string} searchTerm - Search term
+   * @param {string} filter - Filter value
    * @private
    */
-  _getArchetypeFromStats(survivor) {
-    const physical = survivor.physical || 5;
-    const mental = survivor.mental || 5;
-    const social = survivor.personality || 5;
+  _filterSurvivors(searchTerm, filter) {
+    const cards = document.querySelectorAll('.character-card');
     
-    if (physical >= 8) return 'Athlete';
-    if (mental >= 8) return 'Strategist';
-    if (social >= 8) return 'Social Butterfly';
-    if (physical >= 7 && mental >= 7) return 'Outdoorsman';
-    return 'Versatile';
+    searchTerm = searchTerm.toLowerCase().trim();
+    
+    cards.forEach(card => {
+      const cardId = parseInt(card.dataset.id, 10);
+      const survivor = this.availableSurvivors.find(s => s.id === cardId);
+      
+      if (!survivor) return;
+      
+      let matchesSearch = true;
+      let matchesFilter = true;
+      
+      // Check search term
+      if (searchTerm) {
+        matchesSearch = survivor.name.toLowerCase().includes(searchTerm) || 
+                      survivor.occupation.toLowerCase().includes(searchTerm) || 
+                      survivor.archetype.toLowerCase().includes(searchTerm);
+      }
+      
+      // Check filter
+      if (filter !== 'all') {
+        if (filter === 'male' || filter === 'female') {
+          matchesFilter = survivor.gender === filter;
+        } else if (filter === 'physical') {
+          matchesFilter = survivor.physical >= 7;
+        } else if (filter === 'mental') {
+          matchesFilter = survivor.mental >= 7;
+        } else if (filter === 'social') {
+          matchesFilter = survivor.personality >= 7;
+        }
+      }
+      
+      // Show or hide card
+      if (matchesSearch && matchesFilter) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
   },
   
   /**
-   * Create placeholder survivors if data is not available
-   * @returns {Array} Array of survivor objects
+   * Select a random character
    * @private
    */
-  _createPlaceholderSurvivors() {
-    console.warn('Using placeholder survivors data');
+  _selectRandomCharacter() {
+    // Get visible characters
+    const visibleCards = Array.from(document.querySelectorAll('.character-card')).filter(
+      card => card.style.display !== 'none'
+    );
     
-    const maleNames = [
-      'Alex', 'Brandon', 'Chris', 'Derek', 'Eric',
-      'Frank', 'Greg', 'Henry', 'Isaac', 'Jake',
-      'Kevin', 'Luke', 'Mike', 'Nathan', 'Oliver'
-    ];
+    if (visibleCards.length === 0) return;
     
-    const femaleNames = [
-      'Amanda', 'Brooke', 'Carly', 'Diana', 'Emily',
-      'Fiona', 'Grace', 'Hannah', 'Isabel', 'Julia',
-      'Katie', 'Laura', 'Megan', 'Nicole', 'Olivia'
-    ];
+    // Select random card
+    const randomIndex = Math.floor(Math.random() * visibleCards.length);
+    const randomCard = visibleCards[randomIndex];
+    const survivorId = parseInt(randomCard.dataset.id, 10);
+    const survivor = this.availableSurvivors.find(s => s.id === survivorId);
     
-    const archetypes = [
-      'Athlete', 'Strategist', 'Social Butterfly', 
-      'Outdoorsman', 'Underdog', 'Leader', 'Wildcard'
-    ];
-    
-    const occupations = [
-      'Teacher', 'Lawyer', 'Doctor', 'Engineer', 'Firefighter',
-      'Police Officer', 'Chef', 'Bartender', 'Fitness Trainer',
-      'Student', 'Artist', 'Musician', 'Writer', 'Entrepreneur'
-    ];
-    
-    const survivors = [];
-    const usedNames = new Set();
-    
-    // Create male survivors
-    for (let i = 0; i < 8; i++) {
-      let name;
-      do {
-        name = maleNames[getRandomInt(0, maleNames.length - 1)];
-      } while (usedNames.has(name));
-      usedNames.add(name);
+    if (survivor) {
+      this._selectCharacter(survivor);
       
-      const archetype = archetypes[getRandomInt(0, archetypes.length - 1)];
-      const occupation = occupations[getRandomInt(0, occupations.length - 1)];
-      const age = getRandomInt(21, 50);
-      
-      // Assign stats based on archetype
-      let physical, mental, personality;
-      
-      switch(archetype) {
-        case 'Athlete':
-          physical = getRandomInt(7, 10);
-          mental = getRandomInt(3, 7);
-          personality = getRandomInt(4, 8);
-          break;
-        case 'Strategist':
-          physical = getRandomInt(3, 6);
-          mental = getRandomInt(8, 10);
-          personality = getRandomInt(4, 7);
-          break;
-        case 'Social Butterfly':
-          physical = getRandomInt(3, 6);
-          mental = getRandomInt(5, 8);
-          personality = getRandomInt(8, 10);
-          break;
-        case 'Outdoorsman':
-          physical = getRandomInt(6, 9);
-          mental = getRandomInt(5, 8);
-          personality = getRandomInt(3, 6);
-          break;
-        default:
-          physical = getRandomInt(4, 8);
-          mental = getRandomInt(4, 8);
-          personality = getRandomInt(4, 8);
-      }
-      
-      survivors.push({
-        id: i + 1,
-        name,
-        gender: 'male',
-        age,
-        occupation,
-        archetype,
-        physical,
-        mental,
-        personality,
-        health: 100
-      });
+      // Scroll to the card
+      randomCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    
-    // Create female survivors
-    for (let i = 0; i < 8; i++) {
-      let name;
-      do {
-        name = femaleNames[getRandomInt(0, femaleNames.length - 1)];
-      } while (usedNames.has(name));
-      usedNames.add(name);
-      
-      const archetype = archetypes[getRandomInt(0, archetypes.length - 1)];
-      const occupation = occupations[getRandomInt(0, occupations.length - 1)];
-      const age = getRandomInt(21, 50);
-      
-      // Assign stats based on archetype
-      let physical, mental, personality;
-      
-      switch(archetype) {
-        case 'Athlete':
-          physical = getRandomInt(7, 10);
-          mental = getRandomInt(3, 7);
-          personality = getRandomInt(4, 8);
-          break;
-        case 'Strategist':
-          physical = getRandomInt(3, 6);
-          mental = getRandomInt(8, 10);
-          personality = getRandomInt(4, 7);
-          break;
-        case 'Social Butterfly':
-          physical = getRandomInt(3, 6);
-          mental = getRandomInt(5, 8);
-          personality = getRandomInt(8, 10);
-          break;
-        case 'Outdoorsman':
-          physical = getRandomInt(6, 9);
-          mental = getRandomInt(5, 8);
-          personality = getRandomInt(3, 6);
-          break;
-        default:
-          physical = getRandomInt(4, 8);
-          mental = getRandomInt(4, 8);
-          personality = getRandomInt(4, 8);
-      }
-      
-      survivors.push({
-        id: i + 9,
-        name,
-        gender: 'female',
-        age,
-        occupation,
-        archetype,
-        physical,
-        mental,
-        personality,
-        health: 100
-      });
-    }
-    
-    return survivors;
   },
   
   /**
@@ -486,6 +803,7 @@ const CharacterSelectionScreen = {
   teardown() {
     // Any cleanup code when leaving the screen
     console.log('CharacterSelectionScreen teardown');
+    this.selectedCharacter = null;
   }
 };
 

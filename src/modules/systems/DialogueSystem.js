@@ -1,353 +1,543 @@
 /**
  * @module DialogueSystem
- * Manages in-game dialogues, character speech, and player choices
+ * Handles in-game dialogues, messages, and popups
  */
 
 import { getElement, createElement, clearChildren } from '../utils/DOMUtils.js';
-import { TimerManager } from '../utils/index.js';
 import eventManager, { GameEvents } from '../core/EventManager.js';
+import timerManager from '../utils/TimerManager.js';
 
 class DialogueSystem {
   constructor(gameManager) {
     this.gameManager = gameManager;
-    this.dialogueElement = null;
-    this.dialogueTextElement = null;
-    this.dialogueChoicesElement = null;
-    this.speakerNameElement = null;
-    this.portraitElement = null;
-    this.onChoiceSelectedCallback = null;
-    this.typingSpeed = 30; // ms per character
-    this.typingTimerId = null;
-    this.isTyping = false;
-    this.fullText = '';
-    
-    // Initialize once DOM is ready
-    this._initializeElements();
+    this.dialogueContainer = null;
+    this.isDialogueShowing = false;
+    this.dialogueQueue = [];
+    this.dialogueAnimationInProgress = false;
+    this.processDialogueTimeout = null;
+    this.callbacks = new Map(); // Map of dialogue IDs to callbacks
+    this.defaultCloseCallback = () => {}; // Default callback when a dialogue is closed
   }
   
   /**
-   * Initialize dialogue elements
-   * @private
+   * Initialize the dialogue system
    */
-  _initializeElements() {
-    // Setup dialogue elements or create them if they don't exist
-    this.dialogueElement = getElement('dialogue-container');
+  initialize() {
+    console.log('Initializing DialogueSystem');
     
-    if (!this.dialogueElement) {
-      this._createDialogueElements();
-    } else {
-      this.dialogueTextElement = getElement('dialogue-text');
-      this.dialogueChoicesElement = getElement('dialogue-choices');
-      this.speakerNameElement = getElement('dialogue-speaker-name');
-      this.portraitElement = getElement('dialogue-portrait');
-      
-      // Add click handler to dialogue text to complete typing
-      if (this.dialogueTextElement) {
-        this.dialogueTextElement.addEventListener('click', () => {
-          if (this.isTyping) {
-            this.completeTyping();
-          }
-        });
-      }
+    // Create dialogue container if it doesn't exist
+    if (!getElement('dialogue-container')) {
+      this._createDialogueContainer();
     }
+    
+    this.dialogueContainer = getElement('dialogue-container');
+    
+    if (!this.dialogueContainer) {
+      console.error('Failed to create dialogue container');
+      return;
+    }
+    
+    // Hide the container initially
+    this.dialogueContainer.style.display = 'none';
+    
+    // Subscribe to game events if needed
+    eventManager.subscribe(GameEvents.GAME_STATE_CHANGED, this._handleGameStateChanged.bind(this));
   }
   
   /**
-   * Create dialogue UI elements if they don't exist
+   * Handle game state changed event
+   * @param {Object} data - Event data
    * @private
    */
-  _createDialogueElements() {
-    // Create main dialogue container
-    this.dialogueElement = createElement('div', {
+  _handleGameStateChanged(data) {
+    // Clear any existing dialogues when game state changes
+    this.clearAllDialogues();
+  }
+  
+  /**
+   * Create the dialogue container
+   * @private
+   */
+  _createDialogueContainer() {
+    const body = document.body;
+    
+    const container = createElement('div', {
       id: 'dialogue-container',
-      className: 'dialogue-container hidden',
       style: {
         position: 'fixed',
-        bottom: '10%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '90%',
-        maxWidth: '800px',
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        borderRadius: '8px',
-        padding: '20px',
-        color: 'white',
-        fontFamily: 'Arial, sans-serif',
-        zIndex: '1000',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
         display: 'flex',
-        flexDirection: 'column'
-      }
-    });
-    
-    // Create portrait and speaker section
-    const speakerSection = createElement('div', {
-      id: 'dialogue-speaker-section',
-      style: {
-        display: 'flex',
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: '10px',
-        gap: '15px'
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: '1000',
+        opacity: '0',
+        transition: 'opacity 0.3s ease',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)'
       }
     });
     
-    // Create portrait element
-    this.portraitElement = createElement('div', {
-      id: 'dialogue-portrait',
+    body.appendChild(container);
+  }
+  
+  /**
+   * Show a dialogue
+   * @param {string} message - The message to display
+   * @param {Array} options - Array of option strings
+   * @param {Function} callback - Function to call when dialogue is closed
+   * @param {Object} styles - Additional styles for the dialogue
+   * @returns {string} Dialogue ID
+   */
+  showDialogue(message, options = ["OK"], callback = null, styles = {}) {
+    if (!this.dialogueContainer) {
+      console.error('Dialogue container not found');
+      return null;
+    }
+    
+    const dialogueId = `dialogue-${Date.now()}`;
+    
+    // If a dialogue is already showing, queue this one
+    if (this.isDialogueShowing || this.dialogueAnimationInProgress) {
+      this.dialogueQueue.push({
+        id: dialogueId,
+        message,
+        options,
+        callback,
+        styles
+      });
+      
+      return dialogueId;
+    }
+    
+    // Set flags
+    this.isDialogueShowing = true;
+    this.dialogueAnimationInProgress = true;
+    
+    // Store callback if provided
+    if (callback) {
+      this.callbacks.set(dialogueId, callback);
+    }
+    
+    // Clear container
+    clearChildren(this.dialogueContainer);
+    
+    // Create dialogue box
+    const dialogueBox = createElement('div', {
+      className: 'dialogue-box',
       style: {
-        width: '60px',
-        height: '60px',
-        borderRadius: '30px',
-        overflow: 'hidden',
-        backgroundColor: '#555',
-        display: 'none'
+        backgroundColor: styles.backgroundColor || 'rgba(40, 40, 40, 0.95)',
+        borderRadius: '8px',
+        padding: '1.5rem',
+        maxWidth: '80%',
+        maxHeight: '80%',
+        overflow: 'auto',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+        transform: 'translateY(20px)',
+        opacity: '0',
+        transition: 'transform 0.3s ease, opacity 0.3s ease',
+        ...styles
       }
     });
     
-    // Create speaker name element
-    this.speakerNameElement = createElement('div', {
-      id: 'dialogue-speaker-name',
+    // Add message
+    const messageElement = createElement('div', {
+      className: 'dialogue-message',
       style: {
-        fontWeight: 'bold',
-        fontSize: '1.2em',
-        display: 'none'
-      }
-    });
-    
-    speakerSection.appendChild(this.portraitElement);
-    speakerSection.appendChild(this.speakerNameElement);
-    this.dialogueElement.appendChild(speakerSection);
-    
-    // Create dialogue text element
-    this.dialogueTextElement = createElement('div', {
-      id: 'dialogue-text',
-      style: {
-        marginBottom: '20px',
+        color: '#fff',
+        marginBottom: '1.5rem',
         lineHeight: '1.5',
-        fontSize: '1.1em'
+        fontSize: '1.1rem'
       }
     });
-    this.dialogueElement.appendChild(this.dialogueTextElement);
     
-    // Create dialogue choices element
-    this.dialogueChoicesElement = createElement('div', {
-      id: 'dialogue-choices',
+    // Support HTML in messages if flagged as safe
+    if (styles.isHtml) {
+      messageElement.innerHTML = message;
+    } else {
+      messageElement.textContent = message;
+    }
+    
+    dialogueBox.appendChild(messageElement);
+    
+    // Add options
+    const optionsContainer = createElement('div', {
+      className: 'dialogue-options',
       style: {
         display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
+        justifyContent: 'flex-end',
+        gap: '0.5rem',
+        flexWrap: 'wrap'
       }
     });
-    this.dialogueElement.appendChild(this.dialogueChoicesElement);
     
-    // Add to document
-    document.body.appendChild(this.dialogueElement);
-    
-    // Add click handler to dialogue text to complete typing
-    this.dialogueTextElement.addEventListener('click', () => {
-      if (this.isTyping) {
-        this.completeTyping();
-      }
+    options.forEach((option, index) => {
+      const optionButton = createElement('button', {
+        className: `dialogue-option ${index === 0 ? 'primary-option' : 'secondary-option'}`,
+        style: {
+          padding: '0.6rem 1rem',
+          backgroundColor: index === 0 ? '#ff9800' : '#607d8b',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        },
+        onclick: () => {
+          // Close dialog
+          this.hideDialogue();
+          
+          // Execute callback with selected option
+          const storedCallback = this.callbacks.get(dialogueId) || this.defaultCloseCallback;
+          storedCallback(option, index);
+          
+          // Remove callback
+          this.callbacks.delete(dialogueId);
+        }
+      }, option);
+      
+      optionsContainer.appendChild(optionButton);
     });
+    
+    dialogueBox.appendChild(optionsContainer);
+    
+    // Add to container
+    this.dialogueContainer.appendChild(dialogueBox);
+    
+    // Show container
+    this.dialogueContainer.style.display = 'flex';
+    
+    // Trigger animation
+    setTimeout(() => {
+      this.dialogueContainer.style.opacity = '1';
+      dialogueBox.style.transform = 'translateY(0)';
+      dialogueBox.style.opacity = '1';
+      
+      // Mark animation as complete
+      setTimeout(() => {
+        this.dialogueAnimationInProgress = false;
+      }, 300);
+    }, 10);
+    
+    // Publish event
+    eventManager.publish(GameEvents.DIALOGUE_SHOWN, {
+      dialogueId,
+      message
+    });
+    
+    return dialogueId;
   }
   
   /**
-   * Show dialogue with choices
-   * @param {string} text - The dialogue text
-   * @param {Array} choices - Array of choice texts
-   * @param {Function} onChoiceSelected - Callback when choice is selected
+   * Hide the current dialogue
+   * @param {Function} callback - Optional callback to run after hiding
    */
-  showDialogue(text, choices, onChoiceSelected) {
-    // Make sure elements are initialized
-    if (!this.dialogueElement) {
-      this._initializeElements();
+  hideDialogue(callback = null) {
+    if (!this.isDialogueShowing || !this.dialogueContainer) {
+      if (callback) callback();
+      return;
     }
     
-    // Reset speaker info
-    this.speakerNameElement.style.display = 'none';
-    this.portraitElement.style.display = 'none';
+    // Get dialogue box
+    const dialogueBox = this.dialogueContainer.querySelector('.dialogue-box');
     
-    // Show the dialogue container
-    this.dialogueElement.classList.remove('hidden');
+    if (!dialogueBox) {
+      this.isDialogueShowing = false;
+      this.dialogueContainer.style.display = 'none';
+      if (callback) callback();
+      return;
+    }
     
-    // Store callback
-    this.onChoiceSelectedCallback = onChoiceSelected;
+    // Set animation flag
+    this.dialogueAnimationInProgress = true;
     
-    // Start typewriter effect
-    this.startTypewriterEffect(text, choices);
+    // Trigger hide animation
+    this.dialogueContainer.style.opacity = '0';
+    dialogueBox.style.transform = 'translateY(20px)';
+    dialogueBox.style.opacity = '0';
     
-    // Publish dialogue shown event
-    eventManager.publish(GameEvents.DIALOG_SHOWN, { text, choices });
+    // Wait for animation to complete
+    setTimeout(() => {
+      // Hide container
+      this.dialogueContainer.style.display = 'none';
+      clearChildren(this.dialogueContainer);
+      
+      // Reset flags
+      this.isDialogueShowing = false;
+      this.dialogueAnimationInProgress = false;
+      
+      // Publish event
+      eventManager.publish(GameEvents.DIALOGUE_HIDDEN);
+      
+      // Process next dialogue in queue
+      if (this.dialogueQueue.length > 0) {
+        const nextDialogue = this.dialogueQueue.shift();
+        this.processDialogueTimeout = timerManager.setTimeout(
+          'process_next_dialogue',
+          () => {
+            this.showDialogue(
+              nextDialogue.message,
+              nextDialogue.options,
+              nextDialogue.callback,
+              nextDialogue.styles
+            );
+          },
+          250
+        );
+      }
+      
+      // Run callback if provided
+      if (callback) callback();
+    }, 300);
   }
   
   /**
-   * Show dialogue with a speaker
-   * @param {string} text - The dialogue text
-   * @param {Array} choices - Array of choice texts
-   * @param {Function} onChoiceSelected - Callback when choice is selected
-   * @param {string} speakerName - Name of the speaker
-   * @param {string} portraitUrl - URL to speaker portrait
+   * Show a notification message
+   * @param {string} message - Message to display
+   * @param {string} type - Notification type (info, success, warning, error)
+   * @param {number} duration - Duration in ms (0 for no auto-close)
+   * @returns {string} Notification ID
    */
-  showDialogueWithSpeaker(text, choices, onChoiceSelected, speakerName, portraitUrl) {
-    // Make sure elements are initialized
-    if (!this.dialogueElement) {
-      this._initializeElements();
+  showNotification(message, type = 'info', duration = 5000) {
+    // Create notification container if it doesn't exist
+    let notifContainer = getElement('notification-container');
+    
+    if (!notifContainer) {
+      notifContainer = createElement('div', {
+        id: 'notification-container',
+        style: {
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          width: '300px',
+          zIndex: '900'
+        }
+      });
+      
+      document.body.appendChild(notifContainer);
     }
     
-    // Set speaker name
-    if (speakerName) {
-      this.speakerNameElement.textContent = speakerName;
-      this.speakerNameElement.style.display = 'block';
-    } else {
-      this.speakerNameElement.style.display = 'none';
-    }
+    // Notification ID
+    const notificationId = `notification-${Date.now()}`;
     
-    // Set portrait if provided
-    if (portraitUrl) {
-      this.portraitElement.style.backgroundImage = `url(${portraitUrl})`;
-      this.portraitElement.style.backgroundSize = 'cover';
-      this.portraitElement.style.backgroundPosition = 'center';
-      this.portraitElement.style.display = 'block';
-    } else {
-      this.portraitElement.style.display = 'none';
-    }
-    
-    // Show the dialogue
-    this.showDialogue(text, choices, onChoiceSelected);
-  }
-  
-  /**
-   * Start typewriter effect for gradual text reveal
-   * @param {string} text - The text to type
-   * @param {Array} choices - The choices to show after text is typed
-   */
-  startTypewriterEffect(text, choices) {
-    // Clear existing text and timer
-    if (this.typingTimerId) {
-      TimerManager.clearTimeout(this.typingTimerId);
-    }
-    
-    // Store full text for later
-    this.fullText = text;
-    
-    // Clear existing text and choices
-    this.dialogueTextElement.textContent = '';
-    clearChildren(this.dialogueChoicesElement);
-    
-    // Set typing status
-    this.isTyping = true;
-    
-    // Start typing character by character
-    let charIndex = 0;
-    
-    const typeNextChar = () => {
-      if (charIndex < text.length) {
-        this.dialogueTextElement.textContent += text.charAt(charIndex);
-        charIndex++;
-        this.typingTimerId = TimerManager.setTimeout(typeNextChar, this.typingSpeed);
-      } else {
-        // When done typing
-        this.isTyping = false;
-        // Show choices when typing is complete
-        this.createChoiceButtons(choices);
+    // Determine styles based on type
+    const typeStyles = {
+      info: {
+        backgroundColor: 'rgba(33, 150, 243, 0.9)',
+        icon: 'ℹ️'
+      },
+      success: {
+        backgroundColor: 'rgba(76, 175, 80, 0.9)',
+        icon: '✓'
+      },
+      warning: {
+        backgroundColor: 'rgba(255, 152, 0, 0.9)',
+        icon: '⚠️'
+      },
+      error: {
+        backgroundColor: 'rgba(244, 67, 54, 0.9)',
+        icon: '❌'
       }
     };
     
-    // Start the typing effect
-    typeNextChar();
-  }
-  
-  /**
-   * Create choice buttons
-   * @param {Array} choices - Array of choice texts
-   */
-  createChoiceButtons(choices) {
-    // Clear existing choices
-    clearChildren(this.dialogueChoicesElement);
+    const style = typeStyles[type] || typeStyles.info;
     
-    // Add each choice as a button
-    choices.forEach((choice, index) => {
-      const button = createElement('button', {
-        className: 'dialogue-choice-button',
-        onclick: () => this.onChoiceButtonClicked(index),
-        style: {
-          padding: '10px 15px',
-          backgroundColor: '#4a6fa5',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          fontSize: '1em',
-          cursor: 'pointer',
-          textAlign: 'left'
-        }
-      }, choice);
-      
-      this.dialogueChoicesElement.appendChild(button);
+    // Create notification element
+    const notification = createElement('div', {
+      id: notificationId,
+      className: 'notification',
+      style: {
+        backgroundColor: style.backgroundColor,
+        color: '#fff',
+        padding: '0.8rem 1rem',
+        marginBottom: '0.5rem',
+        borderRadius: '4px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        opacity: '0',
+        transform: 'translateX(100%)',
+        transition: 'opacity 0.3s ease, transform 0.3s ease'
+      }
     });
-  }
-  
-  /**
-   * Handle choice button clicked
-   * @param {number} choiceIndex - The index of the choice
-   */
-  onChoiceButtonClicked(choiceIndex) {
-    // Call the callback with the choice index
-    if (this.onChoiceSelectedCallback) {
-      this.onChoiceSelectedCallback(choiceIndex);
+    
+    // Notification content
+    const content = createElement('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.5rem',
+        flex: '1'
+      }
+    });
+    
+    // Icon
+    const icon = createElement('div', {
+      className: 'notification-icon',
+      style: {
+        flexShrink: '0',
+        marginTop: '0.1rem'
+      }
+    }, style.icon);
+    
+    // Message
+    const messageElement = createElement('div', {
+      className: 'notification-message',
+      style: {
+        lineHeight: '1.4'
+      }
+    }, message);
+    
+    // Close button
+    const closeButton = createElement('button', {
+      className: 'notification-close',
+      style: {
+        background: 'none',
+        border: 'none',
+        color: '#fff',
+        cursor: 'pointer',
+        marginLeft: '0.5rem',
+        opacity: '0.7',
+        fontSize: '1.1rem',
+        padding: '0',
+        flexShrink: '0'
+      },
+      onmouseover: (e) => { e.target.style.opacity = '1'; },
+      onmouseout: (e) => { e.target.style.opacity = '0.7'; },
+      onclick: () => { this.hideNotification(notificationId); }
+    }, '×');
+    
+    // Assemble notification
+    content.appendChild(icon);
+    content.appendChild(messageElement);
+    notification.appendChild(content);
+    notification.appendChild(closeButton);
+    
+    // Add to container
+    notifContainer.appendChild(notification);
+    
+    // Show with animation
+    setTimeout(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Auto-close if duration is set
+    if (duration > 0) {
+      timerManager.setTimeout(`close-notification-${notificationId}`, () => {
+        this.hideNotification(notificationId);
+      }, duration);
     }
     
-    // Publish choice selected event
-    eventManager.publish(GameEvents.DIALOG_CHOICE_SELECTED, { choiceIndex });
+    return notificationId;
   }
   
   /**
-   * Hide the dialogue
+   * Hide a notification
+   * @param {string} notificationId - Notification ID
    */
-  hideDialogue() {
-    if (this.dialogueElement) {
-      this.dialogueElement.classList.add('hidden');
+  hideNotification(notificationId) {
+    const notification = getElement(notificationId);
+    
+    if (!notification) return;
+    
+    // Hide with animation
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(100%)';
+    
+    // Remove after animation completes
+    setTimeout(() => {
+      notification.remove();
       
-      // Clear text and choices
-      this.dialogueTextElement.textContent = '';
-      clearChildren(this.dialogueChoicesElement);
-      
-      // Clear typing timer
-      if (this.typingTimerId) {
-        TimerManager.clearTimeout(this.typingTimerId);
-        this.typingTimerId = null;
+      // Check if container is empty and remove it if so
+      const container = getElement('notification-container');
+      if (container && container.children.length === 0) {
+        container.remove();
       }
-      
-      // Reset typing status
-      this.isTyping = false;
-      
-      // Publish dialogue closed event
-      eventManager.publish(GameEvents.DIALOG_CLOSED, {});
-    }
+    }, 300);
+    
+    // Clear any auto-close timer
+    timerManager.clearTimeout(`close-notification-${notificationId}`);
   }
   
   /**
-   * Complete the text typing immediately
+   * Show a confirmation dialog
+   * @param {string} message - Message to display
+   * @param {Function} onConfirm - Function to call when confirmed
+   * @param {Function} onCancel - Function to call when canceled
+   * @param {Object} options - Custom options
+   * @returns {string} Dialog ID
    */
-  completeTyping() {
-    if (this.isTyping) {
-      // Stop the typewriter timer
-      if (this.typingTimerId) {
-        TimerManager.clearTimeout(this.typingTimerId);
-        this.typingTimerId = null;
+  showConfirmation(message, onConfirm, onCancel = null, options = {}) {
+    const confirmText = options.confirmText || 'Confirm';
+    const cancelText = options.cancelText || 'Cancel';
+    const dialogOptions = [cancelText, confirmText];
+    
+    const callback = (option, index) => {
+      if (index === 1 && onConfirm) {
+        onConfirm();
+      } else if (index === 0 && onCancel) {
+        onCancel();
       }
-      
-      // Show the full text immediately
-      this.dialogueTextElement.textContent = this.fullText;
-      
-      // Get the saved choices from the choices element
-      const choices = Array.from(this.dialogueChoicesElement.querySelectorAll('.dialogue-choice-button'))
-        .map(button => button.textContent);
-      
-      // Display choices
-      this.createChoiceButtons(choices.length > 0 ? choices : ['Continue']);
-      
-      // Reset typing status
-      this.isTyping = false;
-    }
+    };
+    
+    const styles = {
+      backgroundColor: 'rgba(40, 40, 40, 0.95)',
+      ...options.styles
+    };
+    
+    return this.showDialogue(message, dialogOptions, callback, styles);
+  }
+  
+  /**
+   * Clear all dialogues and the queue
+   */
+  clearAllDialogues() {
+    // Hide current dialogue
+    this.hideDialogue();
+    
+    // Clear queue
+    this.dialogueQueue = [];
+    
+    // Clear timeouts
+    timerManager.clearTimeout('process_next_dialogue');
+  }
+  
+  /**
+   * Set default callback for dialogues
+   * @param {Function} callback - Default callback
+   */
+  setDefaultCloseCallback(callback) {
+    this.defaultCloseCallback = callback;
+  }
+  
+  /**
+   * Check if a dialogue is currently showing
+   * @returns {boolean} Whether a dialogue is showing
+   */
+  isShowing() {
+    return this.isDialogueShowing;
+  }
+  
+  /**
+   * Get the number of queued dialogues
+   * @returns {number} Number of queued dialogues
+   */
+  getQueueLength() {
+    return this.dialogueQueue.length;
+  }
+  
+  /**
+   * Reset the dialogue system
+   */
+  reset() {
+    this.clearAllDialogues();
+    this.callbacks.clear();
+    this.defaultCloseCallback = () => {};
   }
 }
 

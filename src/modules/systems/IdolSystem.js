@@ -1,20 +1,29 @@
 /**
  * @module IdolSystem
- * Manages hidden immunity idols and their discovery mechanics
+ * Manages hidden immunity idols and advantages in the game
  */
 
-import { getElement, createElement, clearChildren } from '../utils/DOMUtils.js';
-import { getRandomItem } from '../utils/CommonUtils.js';
 import eventManager, { GameEvents } from '../core/EventManager.js';
+import { getRandomInt, generateId } from '../utils/CommonUtils.js';
+
+// Idol types
+export const IdolType = {
+  REGULAR: 'regular', // Standard immunity idol
+  SUPER: 'super', // Super idol that can be played after votes are read
+  NULLIFIER: 'nullifier', // Nullifies an idol played by someone else
+  STEAL: 'steal', // Steal a vote
+  EXTRA: 'extra' // Extra vote
+};
 
 class IdolSystem {
   constructor(gameManager) {
     this.gameManager = gameManager;
-    this.idolsInPlay = 0;
-    this.maxIdols = 2;
-    this.idolLocationName = ""; // Beach, Jungle, Camp, Private Area
-    this.idolHidingSpot = "";   // The specific hiding spot
-    this.searchedSpots = new Set(); // Track searched spots as "locationName:hidingSpot" strings
+    this.idols = []; // Array of idol objects
+    this.advantages = []; // Array of advantage objects
+    this.idolsFound = 0; // Number of idols found this game
+    this.defaultIdolsPerTribe = 1; // Number of idols to place at start
+    this.idolRehideChance = 0.75; // Chance that an idol is rehidden after being played
+    this.replayedIdolsCount = 0; // Number of idols that have been rehidden
   }
   
   /**
@@ -22,601 +31,21 @@ class IdolSystem {
    */
   initialize() {
     console.log('Initializing IdolSystem');
-    this.idolsInPlay = 0;
-    this.resetIdolLocations();
     
-    // Setup event listeners
-    eventManager.subscribe(GameEvents.IDOL_PLAYED, this._handleIdolPlayed.bind(this));
-    eventManager.subscribe(GameEvents.TRIBES_MERGED, this._handleTribeseMerged.bind(this));
+    // Subscribe to events
+    eventManager.subscribe(GameEvents.TRIBES_CREATED, this._handleTribesCreated.bind(this));
+    eventManager.subscribe(GameEvents.TRIBES_MERGED, this._handleTribesMerged.bind(this));
+    eventManager.subscribe(GameEvents.DAY_ADVANCED, this._handleDayAdvanced.bind(this));
   }
   
   /**
-   * Reset idol locations - called at game start and after an idol is played
-   */
-  resetIdolLocations() {
-    // Clear searched spots
-    this.searchedSpots.clear();
-    
-    // Generate a random location for the idol to be hidden
-    const locations = ["Beach", "Jungle", "Camp", "Private Area"];
-    const selectedLocation = getRandomItem(locations);
-    
-    // Get hiding spots for that location
-    const hidingSpots = this.getLocationHidingSpots(selectedLocation);
-    
-    // Select one random hiding spot
-    const selectedSpot = getRandomItem(hidingSpots);
-    
-    // Store the location and hiding spot separately as strings
-    this.idolLocationName = selectedLocation;
-    this.idolHidingSpot = selectedSpot;
-    
-    // Log information separately to avoid any issues with object stringification
-    console.log("New idol hidden at - Location:", this.idolLocationName);
-    console.log("New idol hidden at - Hiding spot:", this.idolHidingSpot);
-    
-    // Publish idol hidden event
-    eventManager.publish(GameEvents.IDOL_HIDDEN, {
-      location: this.idolLocationName,
-      hidingSpot: this.idolHidingSpot
-    });
-  }
-  
-  /**
-   * Show idol search interface
-   */
-  showIdolSearch() {
-    console.log("showIdolSearch called - idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-    console.log("Current idol is at:", this.idolLocationName, "in", this.idolHidingSpot);
-    
-    // Check if any idols are available to find
-    if (this.idolsInPlay >= this.maxIdols) {
-      // No idols left to find
-      if (this.gameManager.systems.dialogueSystem) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          "You search around but don't find any hidden immunity idols.",
-          ["Continue"],
-          () => this.gameManager.systems.dialogueSystem.hideDialogue()
-        );
-      } else {
-        console.error("DialogueSystem not available");
-      }
-      return;
-    }
-    
-    // Get current location from CampScreen
-    const campScreenElement = getElement('camp-screen');
-    if (!campScreenElement) {
-      console.error("Cannot find camp screen element");
-      return;
-    }
-    
-    // Look for the data-location attribute on the selected location button
-    const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
-    if (!selectedLocationButton) {
-      console.error("No location button selected");
-      
-      // Show error message to the user
-      if (this.gameManager.systems.dialogueSystem) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          "You need to select a location first before searching for an idol.",
-          ["OK"],
-          () => this.gameManager.systems.dialogueSystem.hideDialogue()
-        );
-      }
-      return;
-    }
-    
-    const locationName = selectedLocationButton.getAttribute('data-location');
-    if (!locationName) {
-      console.error("Selected location button has no data-location attribute");
-      return;
-    }
-    
-    console.log("Player selected location:", locationName);
-    
-    // Create modal dialog for idol hunting
-    this._createIdolSearchModal(locationName);
-  }
-  
-  /**
-   * Create modal dialog for idol searching
-   * @param {string} locationName - The selected location
-   * @private
-   */
-  _createIdolSearchModal(locationName) {
-    // Create modal overlay
-    const modalOverlay = createElement('div', {
-      className: 'modal-overlay',
-      style: {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: '1000'
-      }
-    });
-    
-    // Create modal content
-    const modalContent = createElement('div', {
-      className: 'modal-content',
-      style: {
-        backgroundColor: '#fff',
-        padding: '20px',
-        borderRadius: '5px',
-        maxWidth: '600px',
-        width: '90%',
-        maxHeight: '80%',
-        overflowY: 'auto'
-      }
-    });
-    
-    // Create modal header
-    const modalHeader = createElement('h2', {
-      style: {
-        marginBottom: '20px',
-        color: '#d9534f'
-      }
-    }, `Search for Hidden Immunity Idol at ${locationName}`);
-    
-    // Create modal description
-    const modalDescription = createElement('p', {
-      style: {
-        marginBottom: '20px'
-      }
-    }, 'Choose a specific spot to search. Each search costs 2 energy, which will be consumed only when you select a spot.');
-    
-    // Create spot buttons container
-    const spotButtonsContainer = createElement('div', {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }
-    });
-    
-    // Get location-specific hiding spots
-    const hidingSpots = this.getLocationHidingSpots(locationName);
-    console.log("Available hiding spots for", locationName, ":", hidingSpots);
-    
-    // Create buttons for each hiding spot
-    hidingSpots.forEach(spot => {
-      const button = createElement('button', {
-        className: 'search-spot-button',
-        textContent: `Search ${spot}`,
-        style: {
-          padding: '10px',
-          backgroundColor: '#5cb85c',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          margin: '5px 0',
-          cursor: 'pointer'
-        },
-        onclick: () => {
-          // Remove the modal
-          document.body.removeChild(modalOverlay);
-          
-          // Start the idol search
-          this.startIdolSearch(spot);
-        }
-      });
-      
-      spotButtonsContainer.appendChild(button);
-    });
-    
-    // Create cancel button
-    const cancelButton = createElement('button', {
-      textContent: 'Cancel',
-      style: {
-        backgroundColor: '#d9534f',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        padding: '10px',
-        marginTop: '20px',
-        cursor: 'pointer',
-        width: '100%'
-      },
-      onclick: () => {
-        document.body.removeChild(modalOverlay);
-      }
-    });
-    
-    // Assemble modal
-    modalContent.appendChild(modalHeader);
-    modalContent.appendChild(modalDescription);
-    modalContent.appendChild(spotButtonsContainer);
-    modalContent.appendChild(cancelButton);
-    modalOverlay.appendChild(modalContent);
-    
-    // Add to document
-    document.body.appendChild(modalOverlay);
-  }
-  
-  /**
-   * Start idol search minigame
-   * @param {string} hidingSpot - The specific hiding spot being searched
-   */
-  startIdolSearch(hidingSpot) {
-    // Get current location from CampScreen
-    const campScreenElement = getElement('camp-screen');
-    if (!campScreenElement) {
-      console.error("Cannot find camp screen element");
-      return;
-    }
-    
-    // Look for the data-location attribute on the selected location button
-    const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
-    if (!selectedLocationButton) {
-      console.error("No location button selected");
-      return;
-    }
-    
-    const locationName = selectedLocationButton.getAttribute('data-location');
-    if (!locationName) {
-      console.error("Selected location button has no data-location attribute");
-      return;
-    }
-    
-    console.log("Searching for idol at", locationName, "in", hidingSpot);
-    console.log("Idol is actually at:", this.idolLocationName, "in", this.idolHidingSpot);
-    
-    // Check if this spot has been searched before
-    const searchKey = `${locationName}:${hidingSpot}`;
-    
-    if (this.searchedSpots.has(searchKey)) {
-      if (this.gameManager.systems.dialogueSystem) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          `You've already searched ${hidingSpot} at this location. Try looking somewhere else.`,
-          ["Continue"],
-          () => this.gameManager.systems.dialogueSystem.hideDialogue()
-        );
-      }
-      return;
-    }
-    
-    // Check if player has enough energy first (2 energy cost)
-    const energySystem = this.gameManager.systems.energySystem;
-    if (energySystem && energySystem.getCurrentEnergy) {
-      if (energySystem.getCurrentEnergy() < 2) {
-        if (this.gameManager.systems.dialogueSystem) {
-          this.gameManager.systems.dialogueSystem.showDialogue(
-            "You don't have enough energy to search for an idol.",
-            ["Continue"],
-            () => this.gameManager.systems.dialogueSystem.hideDialogue()
-          );
-        }
-        return;
-      }
-      
-      // Consume energy only when a specific hiding spot is chosen
-      // Cost of searching is 2 energy
-      energySystem.useEnergy(2);
-    } else {
-      console.warn("EnergySystem not available or getCurrentEnergy method missing");
-    }
-    
-    // Add to searched spots
-    this.searchedSpots.add(searchKey);
-    
-    // Show searching animation/message
-    if (this.gameManager.systems.dialogueSystem) {
-      this.gameManager.systems.dialogueSystem.showDialogue(
-        `You carefully search ${hidingSpot}...`,
-        ["Continue searching..."],
-        () => {
-          // Check if this is where the idol is hidden
-          const idolFound = this.idolLocationName === locationName && 
-                           this.idolHidingSpot === hidingSpot;
-          
-          console.log("Idol found check - Result:", idolFound);
-          console.log("Idol found check - Location match:", this.idolLocationName === locationName);
-          console.log("Idol found check - Hiding spot match:", this.idolHidingSpot === hidingSpot);
-          
-          // Handle search result
-          this._handleSearchResult(idolFound, locationName, hidingSpot);
-        }
-      );
-    } else {
-      // If dialogue system is not available, just proceed with search
-      const idolFound = this.idolLocationName === locationName && 
-                       this.idolHidingSpot === hidingSpot;
-      this._handleSearchResult(idolFound, locationName, hidingSpot);
-    }
-  }
-  
-  /**
-   * Handle the result of an idol search
-   * @param {boolean} idolFound - Whether the idol was found
-   * @param {string} locationName - The location that was searched
-   * @param {string} hidingSpot - The hiding spot that was searched
-   * @private
-   */
-  _handleSearchResult(idolFound, locationName, hidingSpot) {
-    if (idolFound) {
-      console.log("Found an idol! Giving to player.");
-      this.givePlayerIdol();
-      
-      // Reset idol location for next time
-      this.resetIdolLocations();
-      
-      // Publish idol found event
-      eventManager.publish(GameEvents.IDOL_FOUND, {
-        location: locationName,
-        hidingSpot: hidingSpot
-      });
-    } else {
-      // Check if all spots in this location have been searched
-      const allSpotsInLocation = this.getLocationHidingSpots(locationName);
-      const allSpotSearched = allSpotsInLocation.every(spot => 
-        this.searchedSpots.has(`${locationName}:${spot}`)
-      );
-      
-      // Show appropriate message based on search results
-      if (allSpotSearched) {
-        if (this.gameManager.systems.dialogueSystem) {
-          this.gameManager.systems.dialogueSystem.showDialogue(
-            `You've searched all possible hiding spots at ${locationName}. There are no idols here. Someone may have already found it or it's hidden elsewhere.`,
-            ["Continue"],
-            () => this.gameManager.systems.dialogueSystem.hideDialogue()
-          );
-        }
-      } else {
-        // Create different messages for different results
-        const messages = [
-          `You search thoroughly ${hidingSpot} but find nothing unusual.`,
-          `After looking carefully ${hidingSpot}, you come up empty-handed.`,
-          `You dig and search ${hidingSpot} but don't find any idols.`,
-          `Unfortunately, there's no idol hidden ${hidingSpot}.`
-        ];
-        
-        const selectedMessage = getRandomItem(messages);
-        console.log("Didn't find idol. Message:", selectedMessage);
-        
-        if (this.gameManager.systems.dialogueSystem) {
-          this.gameManager.systems.dialogueSystem.showDialogue(
-            selectedMessage,
-            ["Continue"],
-            () => this.gameManager.systems.dialogueSystem.hideDialogue()
-          );
-        }
-      }
-      
-      // Publish idol not found event
-      eventManager.publish(GameEvents.IDOL_NOT_FOUND, {
-        location: locationName,
-        hidingSpot: hidingSpot
-      });
-    }
-    
-    // Check if all spots in all locations have been searched
-    this._checkAllSpotsSearched();
-  }
-  
-  /**
-   * Check if all spots in all locations have been searched
-   * @private
-   */
-  _checkAllSpotsSearched() {
-    const allLocations = ["Beach", "Jungle", "Camp", "Private Area"];
-    let totalSpots = 0;
-    let searchedSpots = 0;
-    
-    allLocations.forEach(loc => {
-      const spots = this.getLocationHidingSpots(loc);
-      totalSpots += spots.length;
-      spots.forEach(spot => {
-        if (this.searchedSpots.has(`${loc}:${spot}`)) {
-          searchedSpots++;
-        }
-      });
-    });
-    
-    // If all possible spots have been searched and idol still exists
-    if (searchedSpots >= totalSpots && this.idolLocationName && this.idolHidingSpot) {
-      // Reset idol locations as someone else must have found it
-      if (this.gameManager.systems.dialogueSystem) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          "You've searched everywhere but haven't found an idol. Someone else must have already found it.",
-          ["Continue"],
-          () => {
-            this.gameManager.systems.dialogueSystem.hideDialogue();
-            this.idolsInPlay++;  // Assume an NPC has it
-            this.resetIdolLocations();
-          }
-        );
-      } else {
-        // If dialogue system is not available
-        this.idolsInPlay++;  // Assume an NPC has it
-        this.resetIdolLocations();
-      }
-    }
-  }
-  
-  /**
-   * Get location-specific hiding spots for idols
-   * @param {string} locationName - The name of the location
-   * @returns {Array} Array of hiding spot names
-   */
-  getLocationHidingSpots(locationName) {
-    switch(locationName) {
-      case "Beach":
-        return [
-          "under a pile of shells",
-          "inside a small tidal cave",
-          "buried in the sand",
-          "in a coconut shell",
-          "behind a large rock",
-          "in a hollowed tree stump"
-        ];
-      case "Jungle":
-        return [
-          "inside a hollow tree",
-          "under a large boulder",
-          "in a dense thicket",
-          "high up in a tree",
-          "in a small stream",
-          "under a pile of fallen leaves"
-        ];
-      case "Camp":
-        return [
-          "under the shelter",
-          "buried near the tribe flag",
-          "inside the water well",
-          "in the firewood pile",
-          "underneath the tribe bench",
-          "inside a pot or container"
-        ];
-      case "Private Area":
-        return [
-          "inside a small cave",
-          "under a distinctive rock",
-          "buried at the base of a dead tree",
-          "in a bird's nest",
-          "under a pile of stones",
-          "wedged in a tree branch"
-        ];
-      default:
-        return [
-          "under a rock",
-          "in a tree",
-          "buried in the ground",
-          "inside a hollow log",
-          "behind vegetation",
-          "near the water"
-        ];
-    }
-  }
-  
-  /**
-   * Give a hidden immunity idol to the player
-   */
-  givePlayerIdol() {
-    const playerSurvivor = this.gameManager.getPlayerSurvivor();
-    
-    if (playerSurvivor) {
-      playerSurvivor.hasIdol = true;
-      this.idolsInPlay++;
-      
-      // Show message
-      if (this.gameManager.systems.dialogueSystem) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          "Congratulations! You've found a hidden immunity idol! You can play this idol at tribal council to protect yourself from being voted out.",
-          ["Continue"],
-          () => this.gameManager.systems.dialogueSystem.hideDialogue()
-        );
-      }
-      
-      // Update inventory display
-      const idolStatus = getElement('idol-status');
-      if (idolStatus) {
-        idolStatus.textContent = 'Hidden Immunity Idol: Yes';
-      }
-      
-      const idolsInPlay = getElement('idols-in-play');
-      if (idolsInPlay) {
-        idolsInPlay.textContent = `Idols in Play: ${this.idolsInPlay}`;
-      }
-      
-      console.log("Gave idol to player. Total idols in play:", this.idolsInPlay);
-      
-      // Publish idol acquired event
-      eventManager.publish(GameEvents.IDOL_ACQUIRED, {
-        playerId: playerSurvivor.id,
-        idolsInPlay: this.idolsInPlay
-      });
-    } else {
-      console.error("Player survivor not found, can't give idol");
-    }
-  }
-  
-  /**
-   * Get number of idols in play
-   * @returns {number} Idols in play
-   */
-  getIdolsInPlay() {
-    return this.idolsInPlay;
-  }
-  
-  /**
-   * Process NPC idol finds - chance of NPCs finding idols
-   */
-  processNPCIdolFinds() {
-    // Only process if we have room for more idols
-    if (this.idolsInPlay >= this.maxIdols) {
-      return;
-    }
-    
-    // Calculate higher chances of finding in later phases of the game
-    let findChance = 0.05; // Base 5% chance
-    
-    if (this.gameManager.getGamePhase() === 'postMerge') {
-      findChance = 0.10; // 10% chance after merge
-    }
-    
-    // 15% chance in the final phase
-    if (this.gameManager.getGamePhase() === 'final') {
-      findChance = 0.15;
-    }
-    
-    if (Math.random() < findChance) {
-      // An NPC found an idol
-      this.idolsInPlay++;
-      
-      // Reset idol location
-      this.resetIdolLocations();
-      
-      console.log("An NPC found an idol. Total idols in play:", this.idolsInPlay);
-      
-      // Potentially notify the player, but don't reveal who found it
-      if (this.gameManager.systems.dialogueSystem && Math.random() < 0.5) {
-        this.gameManager.systems.dialogueSystem.showDialogue(
-          "You notice one of the survivors acting suspiciously. They might have found a hidden immunity idol.",
-          ["Continue"],
-          () => this.gameManager.systems.dialogueSystem.hideDialogue()
-        );
-      }
-      
-      // Update idols in play display
-      const idolsInPlay = getElement('idols-in-play');
-      if (idolsInPlay) {
-        idolsInPlay.textContent = `Idols in Play: ${this.idolsInPlay}`;
-      }
-      
-      // Publish NPC idol found event
-      eventManager.publish(GameEvents.NPC_IDOL_FOUND, {
-        idolsInPlay: this.idolsInPlay
-      });
-    }
-  }
-  
-  /**
-   * Handle idol played event
+   * Handle tribes created event
    * @param {Object} data - Event data
    * @private
    */
-  _handleIdolPlayed(data) {
-    // Decrease idols in play
-    if (this.idolsInPlay > 0) {
-      this.idolsInPlay--;
-    }
-    
-    // Hide a new idol
-    this.resetIdolLocations();
-    
-    // Update idols in play display
-    const idolsInPlay = getElement('idols-in-play');
-    if (idolsInPlay) {
-      idolsInPlay.textContent = `Idols in Play: ${this.idolsInPlay}`;
-    }
-    
-    console.log("Idol played. Remaining idols in play:", this.idolsInPlay);
+  _handleTribesCreated(data) {
+    // Generate initial idols for each tribe
+    this._placeInitialIdols();
   }
   
   /**
@@ -624,12 +53,471 @@ class IdolSystem {
    * @param {Object} data - Event data
    * @private
    */
-  _handleTribeseMerged(data) {
-    // Add another idol when tribes merge
-    if (this.idolsInPlay < this.maxIdols) {
-      this.resetIdolLocations();
-      console.log("Tribes merged - new idol hidden");
+  _handleTribesMerged(data) {
+    // Add merge idol(s)
+    this._placeMergeIdols();
+    
+    // Add special advantages at merge
+    this._placeMergeAdvantages();
+    
+    console.log('Merge idols and advantages placed');
+  }
+  
+  /**
+   * Handle day advanced event
+   * @param {Object} data - Event data
+   * @private
+   */
+  _handleDayAdvanced(data) {
+    // Check if we should rehide an idol
+    this._checkForIdolRehiding();
+  }
+  
+  /**
+   * Place initial idols at game start
+   * @private
+   */
+  _placeInitialIdols() {
+    if (!this.gameManager.gameSettings.enableIdols) {
+      console.log('Idols are disabled in settings');
+      return;
     }
+    
+    const tribes = this.gameManager.getTribes();
+    if (!tribes || tribes.length === 0) return;
+    
+    // Clear any existing idols
+    this.idols = [];
+    
+    // Place idols for each tribe
+    tribes.forEach(tribe => {
+      for (let i = 0; i < this.defaultIdolsPerTribe; i++) {
+        const idol = this._createIdol(IdolType.REGULAR, tribe.tribeName);
+        this.idols.push(idol);
+      }
+    });
+    
+    console.log(`Placed ${this.idols.length} initial idols`);
+  }
+  
+  /**
+   * Place idols when tribes merge
+   * @private
+   */
+  _placeMergeIdols() {
+    if (!this.gameManager.gameSettings.enableIdols) return;
+    
+    // Place a merge idol
+    const mergeIdol = this._createIdol(IdolType.REGULAR, 'Merge');
+    this.idols.push(mergeIdol);
+    
+    console.log('Placed merge idol');
+  }
+  
+  /**
+   * Place advantages when tribes merge
+   * @private
+   */
+  _placeMergeAdvantages() {
+    if (!this.gameManager.gameSettings.enableAdvantages) return;
+    
+    // Add a vote steal advantage
+    const stealAdvantage = this._createAdvantage(IdolType.STEAL);
+    this.advantages.push(stealAdvantage);
+    
+    // Add an extra vote advantage
+    const extraVoteAdvantage = this._createAdvantage(IdolType.EXTRA);
+    this.advantages.push(extraVoteAdvantage);
+    
+    // Add an idol nullifier if the game is set to hard mode
+    if (this.gameManager.gameSettings.difficultyLevel === 'hard') {
+      const nullifierAdvantage = this._createAdvantage(IdolType.NULLIFIER);
+      this.advantages.push(nullifierAdvantage);
+    }
+    
+    console.log(`Placed ${this.advantages.length} merge advantages`);
+  }
+  
+  /**
+   * Create a new idol
+   * @param {string} type - Type of idol
+   * @param {string} location - Where the idol is located
+   * @returns {Object} The created idol
+   * @private
+   */
+  _createIdol(type, location) {
+    return {
+      id: generateId(),
+      type,
+      location,
+      isFound: false,
+      foundBy: null,
+      foundOnDay: null,
+      isPlayed: false,
+      playedOnDay: null,
+      playedBy: null,
+      expiresOnDay: null // Some idols might expire
+    };
+  }
+  
+  /**
+   * Create a new advantage
+   * @param {string} type - Type of advantage
+   * @returns {Object} The created advantage
+   * @private
+   */
+  _createAdvantage(type) {
+    return {
+      id: generateId(),
+      type,
+      isFound: false,
+      foundBy: null,
+      foundOnDay: null,
+      isPlayed: false,
+      playedOnDay: null,
+      playedBy: null,
+      expiresOnDay: this.gameManager.getDay() + 3 // Advantages typically expire
+    };
+  }
+  
+  /**
+   * Check if an idol should be rehidden
+   * @private
+   */
+  _checkForIdolRehiding() {
+    if (!this.gameManager.gameSettings.enableIdols) return;
+    
+    // Limit number of rehidden idols based on game phase
+    const maxRehiddenIdols = this.gameManager.isMerged ? 2 : 1;
+    
+    if (this.replayedIdolsCount >= maxRehiddenIdols) return;
+    
+    // Check to see if we should rehide an idol
+    const playedIdols = this.idols.filter(idol => idol.isPlayed);
+    
+    if (playedIdols.length > 0 && Math.random() < this.idolRehideChance) {
+      // Choose one played idol to rehide
+      const idolToRehide = playedIdols[0];
+      
+      // Create a new idol to replace it
+      const newIdol = this._createIdol(IdolType.REGULAR, this.gameManager.isMerged ? 'Merge' : 'Camp');
+      this.idols.push(newIdol);
+      
+      // Increment counter
+      this.replayedIdolsCount++;
+      
+      console.log('Rehid an idol after one was played');
+    }
+  }
+  
+  /**
+   * Randomly search for an idol at a location
+   * @param {number} survivorId - ID of the survivor searching
+   * @param {string} location - Location to search
+   * @returns {Object|null} The found idol or null
+   */
+  searchForIdol(survivorId, location) {
+    if (!this.gameManager.gameSettings.enableIdols) return null;
+    
+    const survivor = this._getSurvivorById(survivorId);
+    if (!survivor) return null;
+    
+    // Get idols at this location that haven't been found
+    const availableIdols = this.idols.filter(idol => 
+      !idol.isFound && 
+      idol.location === location
+    );
+    
+    if (availableIdols.length === 0) return null;
+    
+    // Calculate search success chance based on game phase and number of idols found
+    let successChance = 0.05; // Base 5% chance
+    
+    // Early game bonus
+    if (this.gameManager.getDay() <= 3) {
+      successChance += 0.05;
+    }
+    
+    // Desperate search bonus when tribe is losing
+    const tribe = this._getSurvivorTribe(survivorId);
+    if (tribe && tribe.immunityWins === 0 && this.gameManager.getDay() > 3) {
+      successChance += 0.1;
+    }
+    
+    // Personality factor - smart players find idols easier
+    if (survivor.mental >= 8) {
+      successChance += 0.05;
+    }
+    
+    // Determine if search is successful
+    if (Math.random() < successChance) {
+      // Success! Find an idol
+      const foundIdol = availableIdols[0];
+      
+      // Mark as found
+      foundIdol.isFound = true;
+      foundIdol.foundBy = survivorId;
+      foundIdol.foundOnDay = this.gameManager.getDay();
+      
+      // Update counter
+      this.idolsFound++;
+      
+      // Publish idol found event
+      eventManager.publish(GameEvents.IDOL_FOUND, {
+        idol: foundIdol,
+        survivorId,
+        location
+      });
+      
+      console.log(`Survivor ${survivorId} found an idol at ${location}`);
+      
+      return foundIdol;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Randomly search for an advantage at a location
+   * @param {number} survivorId - ID of the survivor searching
+   * @param {string} location - Location to search
+   * @returns {Object|null} The found advantage or null
+   */
+  searchForAdvantage(survivorId, location) {
+    if (!this.gameManager.gameSettings.enableAdvantages) return null;
+    
+    // Get advantages that haven't been found
+    const availableAdvantages = this.advantages.filter(advantage => 
+      !advantage.isFound
+    );
+    
+    if (availableAdvantages.length === 0) return null;
+    
+    // Even lower chance than idols
+    const successChance = 0.02;
+    
+    // Determine if search is successful
+    if (Math.random() < successChance) {
+      // Success! Find an advantage
+      const foundAdvantage = availableAdvantages[0];
+      
+      // Mark as found
+      foundAdvantage.isFound = true;
+      foundAdvantage.foundBy = survivorId;
+      foundAdvantage.foundOnDay = this.gameManager.getDay();
+      
+      // Set expiration
+      foundAdvantage.expiresOnDay = this.gameManager.getDay() + 3;
+      
+      // Publish advantage found event (using same event as idols for simplicity)
+      eventManager.publish(GameEvents.IDOL_FOUND, {
+        idol: foundAdvantage,
+        survivorId,
+        location,
+        isAdvantage: true
+      });
+      
+      console.log(`Survivor ${survivorId} found an advantage at ${location}`);
+      
+      return foundAdvantage;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Play an idol for a survivor
+   * @param {string} idolId - ID of the idol to play
+   * @param {number} targetId - ID of the survivor to play it for
+   * @returns {boolean} Whether the idol was played successfully
+   */
+  playIdol(idolId, targetId) {
+    const idol = this.idols.find(i => i.id === idolId);
+    
+    if (!idol) {
+      console.error(`Idol ${idolId} not found`);
+      return false;
+    }
+    
+    if (!idol.isFound) {
+      console.error(`Idol ${idolId} has not been found yet`);
+      return false;
+    }
+    
+    if (idol.isPlayed) {
+      console.error(`Idol ${idolId} has already been played`);
+      return false;
+    }
+    
+    const targetSurvivor = this._getSurvivorById(targetId);
+    if (!targetSurvivor) {
+      console.error(`Target survivor ${targetId} not found`);
+      return false;
+    }
+    
+    // Mark as played
+    idol.isPlayed = true;
+    idol.playedOnDay = this.gameManager.getDay();
+    idol.playedBy = idol.foundBy;
+    idol.targetId = targetId;
+    
+    // Grant immunity
+    targetSurvivor.hasImmunity = true;
+    
+    // Publish idol played event
+    eventManager.publish(GameEvents.IDOL_PLAYED, {
+      idol,
+      playerId: idol.foundBy,
+      targetId
+    });
+    
+    console.log(`Survivor ${idol.foundBy} played an idol for ${targetId}`);
+    
+    return true;
+  }
+  
+  /**
+   * Play an advantage
+   * @param {string} advantageId - ID of the advantage to play
+   * @param {number} targetId - ID of the target survivor
+   * @returns {boolean} Whether the advantage was played successfully
+   */
+  playAdvantage(advantageId, targetId) {
+    const advantage = this.advantages.find(a => a.id === advantageId);
+    
+    if (!advantage) {
+      console.error(`Advantage ${advantageId} not found`);
+      return false;
+    }
+    
+    if (!advantage.isFound) {
+      console.error(`Advantage ${advantageId} has not been found yet`);
+      return false;
+    }
+    
+    if (advantage.isPlayed) {
+      console.error(`Advantage ${advantageId} has already been played`);
+      return false;
+    }
+    
+    if (advantage.expiresOnDay < this.gameManager.getDay()) {
+      console.error(`Advantage ${advantageId} has expired`);
+      return false;
+    }
+    
+    const targetSurvivor = this._getSurvivorById(targetId);
+    if (!targetSurvivor) {
+      console.error(`Target survivor ${targetId} not found`);
+      return false;
+    }
+    
+    // Mark as played
+    advantage.isPlayed = true;
+    advantage.playedOnDay = this.gameManager.getDay();
+    advantage.playedBy = advantage.foundBy;
+    advantage.targetId = targetId;
+    
+    // Apply advantage effect
+    switch (advantage.type) {
+      case IdolType.STEAL:
+        // Apply vote steal effect
+        // This will need to be integrated with the voting system
+        break;
+        
+      case IdolType.EXTRA:
+        // Apply extra vote effect
+        // This will need to be integrated with the voting system
+        break;
+        
+      case IdolType.NULLIFIER:
+        // Apply idol nullifier effect
+        // This will need to be integrated with the idol playing system
+        break;
+    }
+    
+    // Publish advantage played event (using same event as idols for simplicity)
+    eventManager.publish(GameEvents.IDOL_PLAYED, {
+      idol: advantage,
+      playerId: advantage.foundBy,
+      targetId,
+      isAdvantage: true
+    });
+    
+    console.log(`Survivor ${advantage.foundBy} played a ${advantage.type} advantage for ${targetId}`);
+    
+    return true;
+  }
+  
+  /**
+   * Get idols owned by a survivor
+   * @param {number} survivorId - ID of the survivor
+   * @returns {Array} Array of idol objects
+   */
+  getIdolsForSurvivor(survivorId) {
+    return this.idols.filter(idol => 
+      idol.isFound && 
+      idol.foundBy === survivorId && 
+      !idol.isPlayed
+    );
+  }
+  
+  /**
+   * Get advantages owned by a survivor
+   * @param {number} survivorId - ID of the survivor
+   * @returns {Array} Array of advantage objects
+   */
+  getAdvantagesForSurvivor(survivorId) {
+    return this.advantages.filter(advantage => 
+      advantage.isFound && 
+      advantage.foundBy === survivorId && 
+      !advantage.isPlayed &&
+      advantage.expiresOnDay >= this.gameManager.getDay()
+    );
+  }
+  
+  /**
+   * Get a survivor by ID
+   * @param {number} id - Survivor ID
+   * @returns {Object|null} Survivor object or null if not found
+   * @private
+   */
+  _getSurvivorById(id) {
+    const tribes = this.gameManager.getTribes();
+    
+    for (const tribe of tribes) {
+      const survivor = tribe.members.find(member => member.id === id);
+      if (survivor) return survivor;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Get a survivor's tribe
+   * @param {number} id - Survivor ID
+   * @returns {Object|null} Tribe object or null if not found
+   * @private
+   */
+  _getSurvivorTribe(id) {
+    const tribes = this.gameManager.getTribes();
+    
+    for (const tribe of tribes) {
+      if (tribe.members.some(member => member.id === id)) {
+        return tribe;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Reset the idol system
+   */
+  reset() {
+    this.idols = [];
+    this.advantages = [];
+    this.idolsFound = 0;
+    this.replayedIdolsCount = 0;
   }
 }
 

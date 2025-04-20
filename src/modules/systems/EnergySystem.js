@@ -1,25 +1,26 @@
 /**
  * @module EnergySystem
- * Manages player energy for actions in the game
+ * Manages player and tribe energy/resource levels
  */
 
-import { getElement } from '../utils/DOMUtils.js';
-import { TimerManager } from '../utils/index.js';
 import eventManager, { GameEvents } from '../core/EventManager.js';
+import timerManager from '../utils/TimerManager.js';
+import { clamp } from '../utils/CommonUtils.js';
 
 class EnergySystem {
   constructor(gameManager) {
     this.gameManager = gameManager;
-    this.maxEnergy = 5;
-    this.currentEnergy = this.maxEnergy;
-    this.energyRegenInterval = null;
-    this.energyRegenTimeMinutes = 3; // Minutes per energy point
-    this.energyElements = {
-      container: null,
-      points: [],
-      timer: null
+    this.energyUpdateInterval = null;
+    this.energyDecayRate = 0.1; // Energy units lost per minute
+    this.energyReplenishRate = 0.5; // Energy units gained per action
+    this.resourceDecayRates = {
+      food: 0.05,
+      water: 0.08,
+      fire: 0.03,
+      shelter: 0.01
     };
-    this.lastRegenTime = Date.now();
+    this.maxEnergy = 100;
+    this.maxResourceLevel = 100;
   }
   
   /**
@@ -27,263 +28,364 @@ class EnergySystem {
    */
   initialize() {
     console.log('Initializing EnergySystem');
-    this.resetEnergy();
-    this._setupEnergyUI();
-    this._startEnergyRegen();
     
-    // Setup event listeners
+    // Start energy decay timer
+    this._startEnergyDecayTimer();
+    
+    // Subscribe to relevant events
     eventManager.subscribe(GameEvents.DAY_ADVANCED, this._handleDayAdvanced.bind(this));
+    eventManager.subscribe(GameEvents.GAME_PHASE_CHANGED, this._handlePhaseChanged.bind(this));
+    eventManager.subscribe(GameEvents.CAMP_ACTIVITY_COMPLETED, this._handleCampActivity.bind(this));
   }
   
   /**
-   * Set up energy UI elements
+   * Start energy decay timer
    * @private
    */
-  _setupEnergyUI() {
-    // Get energy container element
-    this.energyElements.container = getElement('energy-container');
-    
-    if (!this.energyElements.container) {
-      console.error('Energy container element not found');
-      return;
+  _startEnergyDecayTimer() {
+    // Clear any existing interval
+    if (this.energyUpdateInterval) {
+      timerManager.clearInterval(this.energyUpdateInterval);
     }
     
-    // Clear existing energy points
-    this.energyElements.container.innerHTML = '';
-    this.energyElements.points = [];
-    
-    // Create energy points
-    for (let i = 0; i < this.maxEnergy; i++) {
-      const energyPoint = document.createElement('div');
-      energyPoint.className = 'energy-point';
-      energyPoint.style.backgroundColor = i < this.currentEnergy ? '#f9a825' : '#555';
-      
-      this.energyElements.container.appendChild(energyPoint);
-      this.energyElements.points.push(energyPoint);
-    }
-    
-    // Create energy timer element
-    this.energyElements.timer = document.createElement('div');
-    this.energyElements.timer.className = 'energy-timer';
-    this.energyElements.timer.style.fontSize = '0.8rem';
-    this.energyElements.timer.style.marginTop = '5px';
-    this.energyElements.timer.style.textAlign = 'center';
-    
-    this.energyElements.container.appendChild(this.energyElements.timer);
-    
-    // Update energy display
-    this._updateEnergyDisplay();
+    // Set new interval (every minute)
+    this.energyUpdateInterval = timerManager.setInterval(
+      'energy_decay',
+      () => {
+        this._applyEnergyDecay();
+      },
+      60000 // 1 minute
+    );
   }
   
   /**
-   * Start energy regeneration timer
+   * Apply energy decay
    * @private
    */
-  _startEnergyRegen() {
-    // Clear existing interval
-    if (this.energyRegenInterval) {
-      TimerManager.clearInterval(this.energyRegenInterval);
+  _applyEnergyDecay() {
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
+    
+    // Decay player energy
+    const newEnergy = Math.max(0, player.energy - this.energyDecayRate);
+    this.setEnergy(newEnergy);
+    
+    // Decay tribe resources
+    const playerTribe = this.gameManager.getPlayerTribe();
+    if (playerTribe) {
+      this._decayResources(playerTribe);
     }
+  }
+  
+  /**
+   * Decay tribe resources
+   * @param {Object} tribe - Tribe object
+   * @private
+   */
+  _decayResources(tribe) {
+    if (!tribe.resources) return;
     
-    // Store regeneration start time
-    this.lastRegenTime = Date.now();
-    
-    // Set interval to update timer display every second
-    this.energyRegenInterval = TimerManager.setInterval(() => {
-      if (this.currentEnergy < this.maxEnergy) {
-        const elapsed = Date.now() - this.lastRegenTime;
-        const timePerPoint = this.energyRegenTimeMinutes * 60 * 1000; // Convert minutes to ms
+    // Apply decay to each resource
+    Object.keys(this.resourceDecayRates).forEach(resource => {
+      if (tribe.resources[resource] !== undefined) {
+        const decayRate = this.resourceDecayRates[resource];
+        tribe.resources[resource] = Math.max(0, tribe.resources[resource] - decayRate);
         
-        // Check if it's time to regenerate a point
-        if (elapsed >= timePerPoint) {
-          // Add energy point
-          this.currentEnergy = Math.min(this.maxEnergy, this.currentEnergy + 1);
-          
-          // Reset timer for next point
-          this.lastRegenTime = Date.now();
-          
-          // Update display
-          this._updateEnergyDisplay();
-          
-          // Publish energy changed event
-          eventManager.publish(GameEvents.PLAYER_ENERGY_CHANGED, {
-            energy: this.currentEnergy,
-            maxEnergy: this.maxEnergy
-          });
-          
-          // If max energy reached, no need to show timer
-          if (this.currentEnergy >= this.maxEnergy) {
-            this._updateTimerDisplay('');
-          }
-        } else {
-          // Update timer display
-          const remainingMs = timePerPoint - elapsed;
-          const minutes = Math.floor(remainingMs / (60 * 1000));
-          const seconds = Math.floor((remainingMs % (60 * 1000)) / 1000);
-          
-          this._updateTimerDisplay(`Next in: ${minutes}:${seconds.toString().padStart(2, '0')}`);
-        }
-      } else {
-        // Full energy, no need to show timer
-        this._updateTimerDisplay('');
+        // Publish resource used event
+        eventManager.publish(GameEvents.RESOURCE_USED, {
+          tribe: tribe.id,
+          resource,
+          amount: decayRate,
+          reason: 'natural decay'
+        });
       }
-    }, 1000, 'energyRegen');
-  }
-  
-  /**
-   * Update energy display based on current energy
-   * @private
-   */
-  _updateEnergyDisplay() {
-    if (!this.energyElements.container) {
-      return;
-    }
-    
-    // Update energy points
-    for (let i = 0; i < this.energyElements.points.length; i++) {
-      this.energyElements.points[i].style.backgroundColor = i < this.currentEnergy ? '#f9a825' : '#555';
-    }
-    
-    // Update tribe info display if present
-    const dayInfo = getElement('day-info');
-    if (dayInfo) {
-      const energyInfo = getElement('energy-info');
-      if (energyInfo) {
-        energyInfo.textContent = `Energy: ${this.currentEnergy}/${this.maxEnergy}`;
-      }
-    }
-  }
-  
-  /**
-   * Update timer display
-   * @param {string} text - Text to display
-   * @private
-   */
-  _updateTimerDisplay(text) {
-    if (this.energyElements.timer) {
-      this.energyElements.timer.textContent = text;
-    }
+    });
   }
   
   /**
    * Handle day advanced event
+   * @param {Object} data - Event data
    * @private
    */
-  _handleDayAdvanced() {
-    // Reset energy when day advances
-    this.resetEnergy();
+  _handleDayAdvanced(data) {
+    // Replenish some energy at the start of a new day
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
+    
+    // Gain 20% energy when a new day starts
+    const energyGain = this.maxEnergy * 0.2;
+    const newEnergy = Math.min(this.maxEnergy, (player.energy || 0) + energyGain);
+    this.setEnergy(newEnergy);
+    
+    // Update tribe resources based on events/activities from previous day
+    this._updateTribeResources();
   }
   
   /**
-   * Get current energy level
-   * @returns {number} Current energy level
+   * Handle game phase changed event
+   * @param {Object} data - Event data
+   * @private
    */
-  getCurrentEnergy() {
-    return this.currentEnergy;
-  }
-  
-  /**
-   * Get maximum energy level
-   * @returns {number} Maximum energy level
-   */
-  getMaxEnergy() {
-    return this.maxEnergy;
-  }
-  
-  /**
-   * Use energy for an action
-   * @param {number} amount - Amount of energy to use
-   * @returns {boolean} Whether energy was used successfully
-   */
-  useEnergy(amount) {
-    // Check if player has enough energy
-    if (this.currentEnergy < amount) {
-      console.log(`Not enough energy. Current: ${this.currentEnergy}, Required: ${amount}`);
-      return false;
+  _handlePhaseChanged(data) {
+    // Adjust energy based on phase
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
+    
+    // Energy loss for certain phases
+    let energyChange = 0;
+    
+    switch (data.newPhase) {
+      case 'challenge':
+        // Challenges cost energy
+        energyChange = -15;
+        break;
+      case 'tribalCouncil':
+        // Tribal councils are stressful
+        energyChange = -5;
+        break;
+      case 'night':
+        // Night time rest recovers energy
+        energyChange = 10;
+        break;
     }
     
-    // Use energy
-    this.currentEnergy -= amount;
-    
-    // Reset regeneration timer
-    this.lastRegenTime = Date.now();
-    
-    // Update display
-    this._updateEnergyDisplay();
-    
-    // Publish energy changed event
-    eventManager.publish(GameEvents.PLAYER_ENERGY_CHANGED, {
-      energy: this.currentEnergy,
-      maxEnergy: this.maxEnergy
-    });
-    
-    console.log(`Used ${amount} energy. Remaining: ${this.currentEnergy}`);
-    return true;
+    if (energyChange !== 0) {
+      const newEnergy = clamp((player.energy || 0) + energyChange, 0, this.maxEnergy);
+      this.setEnergy(newEnergy);
+    }
   }
   
   /**
-   * Add energy to the player
-   * @param {number} amount - Amount of energy to add
+   * Handle camp activity event
+   * @param {Object} data - Event data
+   * @private
    */
-  addEnergy(amount) {
-    this.currentEnergy = Math.min(this.maxEnergy, this.currentEnergy + amount);
+  _handleCampActivity(data) {
+    if (!data.activity) return;
     
-    // Update display
-    this._updateEnergyDisplay();
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
     
-    // Publish energy changed event
-    eventManager.publish(GameEvents.PLAYER_ENERGY_CHANGED, {
-      energy: this.currentEnergy,
-      maxEnergy: this.maxEnergy
-    });
+    const tribe = this.gameManager.getPlayerTribe();
+    if (!tribe) return;
     
-    console.log(`Added ${amount} energy. Current: ${this.currentEnergy}`);
+    // Apply energy cost for the activity
+    let energyCost = 0;
+    let resourceGains = {};
+    
+    switch (data.activity) {
+      case 'gatherFood':
+        energyCost = 10;
+        resourceGains.food = 15;
+        break;
+      case 'gatherWater':
+        energyCost = 8;
+        resourceGains.water = 20;
+        break;
+      case 'buildShelter':
+        energyCost = 15;
+        resourceGains.shelter = 10;
+        break;
+      case 'tendFire':
+        energyCost = 5;
+        resourceGains.fire = 25;
+        break;
+      case 'rest':
+        // Resting gives energy back
+        this.replenishEnergy(25);
+        return;
+      default:
+        // Generic activity
+        energyCost = 5;
+    }
+    
+    // Apply energy cost
+    if (energyCost > 0) {
+      const newEnergy = Math.max(0, (player.energy || 0) - energyCost);
+      this.setEnergy(newEnergy);
+    }
+    
+    // Apply resource gains
+    if (Object.keys(resourceGains).length > 0) {
+      this.addResources(tribe, resourceGains);
+    }
   }
   
   /**
-   * Reset energy to maximum
+   * Update tribe resources
+   * @private
    */
-  resetEnergy() {
-    this.currentEnergy = this.maxEnergy;
+  _updateTribeResources() {
+    const tribe = this.gameManager.getPlayerTribe();
+    if (!tribe || !tribe.resources) return;
     
-    // Update display
-    this._updateEnergyDisplay();
+    // Random fluctuations
+    const resources = ['food', 'water', 'fire', 'shelter'];
+    const changes = {};
     
-    // Reset regeneration timer
-    this.lastRegenTime = Date.now();
-    
-    // Update timer display (hide it since energy is full)
-    this._updateTimerDisplay('');
-    
-    // Publish energy changed event
-    eventManager.publish(GameEvents.PLAYER_ENERGY_CHANGED, {
-      energy: this.currentEnergy,
-      maxEnergy: this.maxEnergy
+    resources.forEach(resource => {
+      // Small random change (-5 to +5)
+      const change = Math.floor(Math.random() * 11) - 5;
+      changes[resource] = change;
     });
     
-    console.log(`Energy reset to maximum: ${this.maxEnergy}`);
+    // Apply changes
+    this.addResources(tribe, changes);
   }
   
   /**
-   * Set energy to a specific value
-   * @param {number} value - The value to set energy to
+   * Set player energy level
+   * @param {number} energy - Energy level
    */
-  setEnergy(value) {
-    this.currentEnergy = Math.min(this.maxEnergy, Math.max(0, value));
+  setEnergy(energy) {
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
     
-    // Update display
-    this._updateEnergyDisplay();
-    
-    // Reset regeneration timer
-    this.lastRegenTime = Date.now();
+    const oldEnergy = player.energy || 0;
+    const newEnergy = clamp(energy, 0, this.maxEnergy);
+    player.energy = newEnergy;
     
     // Publish energy changed event
-    eventManager.publish(GameEvents.PLAYER_ENERGY_CHANGED, {
-      energy: this.currentEnergy,
-      maxEnergy: this.maxEnergy
+    eventManager.publish(GameEvents.ENERGY_CHANGED, {
+      oldEnergy,
+      newEnergy,
+      change: newEnergy - oldEnergy
     });
     
-    console.log(`Energy set to: ${this.currentEnergy}`);
+    // If energy gets too low, affect health
+    if (newEnergy < 20) {
+      // Low energy hurts health
+      this.gameManager.updatePlayerHealth();
+    }
+  }
+  
+  /**
+   * Replenish player energy
+   * @param {number} amount - Amount to replenish
+   */
+  replenishEnergy(amount) {
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
+    
+    const oldEnergy = player.energy || 0;
+    const newEnergy = clamp(oldEnergy + amount, 0, this.maxEnergy);
+    player.energy = newEnergy;
+    
+    // Publish energy changed event
+    eventManager.publish(GameEvents.ENERGY_CHANGED, {
+      oldEnergy,
+      newEnergy,
+      change: amount
+    });
+  }
+  
+  /**
+   * Reduce player energy
+   * @param {number} amount - Amount to reduce
+   */
+  reduceEnergy(amount) {
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return;
+    
+    const oldEnergy = player.energy || 0;
+    const newEnergy = clamp(oldEnergy - amount, 0, this.maxEnergy);
+    player.energy = newEnergy;
+    
+    // Publish energy changed event
+    eventManager.publish(GameEvents.ENERGY_CHANGED, {
+      oldEnergy,
+      newEnergy,
+      change: -amount
+    });
+  }
+  
+  /**
+   * Check if player has enough energy
+   * @param {number} amount - Required energy amount
+   * @returns {boolean} Whether player has enough energy
+   */
+  hasEnough(amount) {
+    const player = this.gameManager.getPlayerSurvivor();
+    if (!player) return false;
+    
+    return (player.energy || 0) >= amount;
+  }
+  
+  /**
+   * Add resources to a tribe
+   * @param {Object} tribe - Tribe object
+   * @param {Object} resources - Resources to add (can be negative)
+   */
+  addResources(tribe, resources) {
+    if (!tribe || !tribe.resources) return;
+    
+    Object.keys(resources).forEach(resource => {
+      if (tribe.resources[resource] !== undefined) {
+        const oldValue = tribe.resources[resource];
+        const change = resources[resource];
+        
+        // Clamp to valid range
+        tribe.resources[resource] = clamp(oldValue + change, 0, this.maxResourceLevel);
+        
+        // Publish resource event
+        if (change > 0) {
+          eventManager.publish(GameEvents.RESOURCE_GATHERED, {
+            tribe: tribe.id,
+            resource,
+            amount: change
+          });
+        } else if (change < 0) {
+          eventManager.publish(GameEvents.RESOURCE_USED, {
+            tribe: tribe.id,
+            resource,
+            amount: -change
+          });
+        }
+      }
+    });
+  }
+  
+  /**
+   * Get tribe resource level
+   * @param {Object} tribe - Tribe object
+   * @param {string} resource - Resource name
+   * @returns {number} Resource level
+   */
+  getResourceLevel(tribe, resource) {
+    if (!tribe || !tribe.resources || tribe.resources[resource] === undefined) {
+      return 0;
+    }
+    
+    return tribe.resources[resource];
+  }
+  
+  /**
+   * Check if tribe has enough of a resource
+   * @param {Object} tribe - Tribe object
+   * @param {string} resource - Resource name
+   * @param {number} amount - Required amount
+   * @returns {boolean} Whether tribe has enough
+   */
+  hasResource(tribe, resource, amount) {
+    return this.getResourceLevel(tribe, resource) >= amount;
+  }
+  
+  /**
+   * Stop all timers
+   */
+  stopTimers() {
+    if (this.energyUpdateInterval) {
+      timerManager.clearInterval(this.energyUpdateInterval);
+      this.energyUpdateInterval = null;
+    }
+  }
+  
+  /**
+   * Reset the energy system
+   */
+  reset() {
+    this.stopTimers();
+    this._startEnergyDecayTimer();
   }
 }
 
