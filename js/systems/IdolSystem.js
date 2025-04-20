@@ -4,7 +4,8 @@ class IdolSystem {
         this.gameManager = gameManager;
         this.idolsInPlay = 0;
         this.maxIdols = 2;
-        this.idolLocation = null;  // Will store the hiding spot that contains an idol
+        this.idolLocationName = "";  // Location name as string (e.g., "Beach", "Jungle")
+        this.idolHidingSpot = "";    // Hiding spot as string (e.g., "under a rock")
         this.searchedSpots = new Set(); // Keep track of searched spots
     }
     
@@ -32,16 +33,14 @@ class IdolSystem {
         // Select one random hiding spot
         const selectedSpot = hidingSpots[Math.floor(Math.random() * hidingSpots.length)];
         
-        // Create the idol location object
-        this.idolLocation = {
-            location: selectedLocation,
-            hidingSpot: selectedSpot
-        };
+        // Store the location and hiding spot separately
+        this.idolLocationName = selectedLocation;
+        this.idolHidingSpot = selectedSpot;
         
-        // Log information separately to avoid JSON.stringify issues
+        // Log information
         console.log("New idol hidden at:");
-        console.log("- Location:", selectedLocation);
-        console.log("- Hiding spot:", selectedSpot);
+        console.log("- Location:", this.idolLocationName);
+        console.log("- Hiding spot:", this.idolHidingSpot);
     }
     
     /**
@@ -49,7 +48,7 @@ class IdolSystem {
      */
     showIdolSearch() {
         console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-        console.log("Current idol location is - location:", this.idolLocation?.location, "hiding spot:", this.idolLocation?.hidingSpot);
+        console.log("Current idol location is - location:", this.idolLocationName, "hiding spot:", this.idolHidingSpot);
         
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
@@ -264,7 +263,7 @@ class IdolSystem {
         }
         
         console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
-        console.log(`Current idol location - location: ${this.idolLocation?.location}, hiding spot: ${this.idolLocation?.hidingSpot}`);
+        console.log("Current idol location - location:", this.idolLocationName, "hiding spot:", this.idolHidingSpot);
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
@@ -301,13 +300,12 @@ class IdolSystem {
             ["Continue searching..."],
             () => {
                 // Check if this is where the idol is hidden
-                const idolFound = this.idolLocation && 
-                                 this.idolLocation.location === locationName && 
-                                 this.idolLocation.hidingSpot === hidingSpot;
+                const idolFound = this.idolLocationName === locationName && 
+                                 this.idolHidingSpot === hidingSpot;
                 
                 console.log(`Idol found check: ${idolFound}`);
-                console.log(`Location match: ${this.idolLocation?.location === locationName}`);
-                console.log(`Hiding spot match: ${this.idolLocation?.hidingSpot === hidingSpot}`);
+                console.log(`Location match: ${this.idolLocationName === locationName}`);
+                console.log(`Hiding spot match: ${this.idolHidingSpot === hidingSpot}`);
                 
                 // After a brief pause, show result
                 if (idolFound) {
@@ -365,7 +363,7 @@ class IdolSystem {
                 });
                 
                 // If all possible spots have been searched and idol still exists
-                if (searchedSpots >= totalSpots && this.idolLocation) {
+                if (searchedSpots >= totalSpots && this.idolLocationName) {
                     // Reset idol locations as someone else must have found it
                     this.gameManager.dialogueSystem.showDialogue(
                         "You've searched everywhere but haven't found an idol. Someone else must have already found it.",
