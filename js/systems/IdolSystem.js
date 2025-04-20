@@ -30,12 +30,18 @@ class IdolSystem {
         const hidingSpots = this.getLocationHidingSpots(selectedLocation);
         
         // Select one random hiding spot
+        const selectedSpot = hidingSpots[Math.floor(Math.random() * hidingSpots.length)];
+        
+        // Create the idol location object
         this.idolLocation = {
             location: selectedLocation,
-            hidingSpot: hidingSpots[Math.floor(Math.random() * hidingSpots.length)]
+            hidingSpot: selectedSpot
         };
         
-        console.log("Idol hidden in location:", this.idolLocation.location, "hiding spot:", this.idolLocation.hidingSpot);
+        // Log information separately to avoid JSON.stringify issues
+        console.log("New idol hidden at:");
+        console.log("- Location:", selectedLocation);
+        console.log("- Hiding spot:", selectedSpot);
     }
     
     /**
