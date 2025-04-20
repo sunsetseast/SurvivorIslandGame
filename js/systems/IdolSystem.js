@@ -1,12 +1,12 @@
-// Idol System
+// Idol System - Completely rewritten to avoid JSON serialization issues
 class IdolSystem {
     constructor(gameManager) {
         this.gameManager = gameManager;
         this.idolsInPlay = 0;
         this.maxIdols = 2;
-        this.idolLocationName = "";  // Location name as string (e.g., "Beach", "Jungle")
-        this.idolHidingSpot = "";    // Hiding spot as string (e.g., "under a rock")
-        this.searchedSpots = new Set(); // Keep track of searched spots
+        this.idolLocationName = ""; // String: Beach, Jungle, Camp, Private Area
+        this.idolHidingSpot = "";   // String: The specific hiding spot
+        this.searchedSpots = new Set(); // Track searched spots as "locationName:hidingSpot" strings
     }
     
     /**
@@ -33,22 +33,21 @@ class IdolSystem {
         // Select one random hiding spot
         const selectedSpot = hidingSpots[Math.floor(Math.random() * hidingSpots.length)];
         
-        // Store the location and hiding spot separately
+        // Store the location and hiding spot separately as strings
         this.idolLocationName = selectedLocation;
         this.idolHidingSpot = selectedSpot;
         
-        // Log information
-        console.log("New idol hidden at:");
-        console.log("- Location:", this.idolLocationName);
-        console.log("- Hiding spot:", this.idolHidingSpot);
+        // Log information separately to avoid any issues with object stringification
+        console.log("New idol hidden at - Location:", this.idolLocationName);
+        console.log("New idol hidden at - Hiding spot:", this.idolHidingSpot);
     }
     
     /**
      * Show idol search interface
      */
     showIdolSearch() {
-        console.log("showIdolSearch called. idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
-        console.log("Current idol location is - location:", this.idolLocationName, "hiding spot:", this.idolHidingSpot);
+        console.log("showIdolSearch called - idolsInPlay:", this.idolsInPlay, "maxIdols:", this.maxIdols);
+        console.log("Current idol is at:", this.idolLocationName, "in", this.idolHidingSpot);
         
         // Check if any idols are available to find
         if (this.idolsInPlay >= this.maxIdols) {
@@ -62,17 +61,16 @@ class IdolSystem {
         }
         
         // Get current location from CampScreen
-        // First check if we can access it
         const campScreenElement = document.getElementById('camp-screen');
         if (!campScreenElement) {
-            console.error("Cannot find camp screen element!");
+            console.error("Cannot find camp screen element");
             return;
         }
         
         // Look for the data-location attribute on the selected location button
         const selectedLocationButton = campScreenElement.querySelector('.location-button.selected');
         if (!selectedLocationButton) {
-            console.error("No location button selected!");
+            console.error("No location button selected");
             
             // Show error message to the user
             this.gameManager.dialogueSystem.showDialogue(
@@ -85,11 +83,11 @@ class IdolSystem {
         
         const locationName = selectedLocationButton.getAttribute('data-location');
         if (!locationName) {
-            console.error("Selected location button has no data-location attribute!");
+            console.error("Selected location button has no data-location attribute");
             return;
         }
         
-        console.log("Selected location:", locationName);
+        console.log("Player selected location:", locationName);
         
         // Create a modal dialog for idol hunting
         const modalOverlay = document.createElement('div');
@@ -133,7 +131,7 @@ class IdolSystem {
         
         // Get location-specific hiding spots
         const hidingSpots = this.getLocationHidingSpots(locationName);
-        console.log("Available hiding spots:", hidingSpots);
+        console.log("Available hiding spots for", locationName, ":", hidingSpots);
         
         // Create buttons for each hiding spot
         hidingSpots.forEach(spot => {
@@ -262,8 +260,8 @@ class IdolSystem {
             return;
         }
         
-        console.log(`Searching for idol at ${locationName}, in ${hidingSpot}`);
-        console.log("Current idol location - location:", this.idolLocationName, "hiding spot:", this.idolHidingSpot);
+        console.log("Searching for idol at", locationName, "in", hidingSpot);
+        console.log("Idol is actually at:", this.idolLocationName, "in", this.idolHidingSpot);
         
         // Check if this spot has been searched before
         const searchKey = `${locationName}:${hidingSpot}`;
@@ -303,9 +301,9 @@ class IdolSystem {
                 const idolFound = this.idolLocationName === locationName && 
                                  this.idolHidingSpot === hidingSpot;
                 
-                console.log(`Idol found check: ${idolFound}`);
-                console.log(`Location match: ${this.idolLocationName === locationName}`);
-                console.log(`Hiding spot match: ${this.idolHidingSpot === hidingSpot}`);
+                console.log("Idol found check - Result:", idolFound);
+                console.log("Idol found check - Location match:", this.idolLocationName === locationName);
+                console.log("Idol found check - Hiding spot match:", this.idolHidingSpot === hidingSpot);
                 
                 // After a brief pause, show result
                 if (idolFound) {
@@ -336,8 +334,8 @@ class IdolSystem {
                             `Unfortunately, there's no idol hidden ${hidingSpot}.`
                         ];
                         
-                        const selectedMessage = getRandomItem(messages);
-                        console.log(`Didn't find idol. Message: ${selectedMessage}`);
+                        const selectedMessage = this.getRandomItem(messages);
+                        console.log("Didn't find idol. Message:", selectedMessage);
                         
                         this.gameManager.dialogueSystem.showDialogue(
                             selectedMessage,
@@ -363,7 +361,7 @@ class IdolSystem {
                 });
                 
                 // If all possible spots have been searched and idol still exists
-                if (searchedSpots >= totalSpots && this.idolLocationName) {
+                if (searchedSpots >= totalSpots && this.idolLocationName && this.idolHidingSpot) {
                     // Reset idol locations as someone else must have found it
                     this.gameManager.dialogueSystem.showDialogue(
                         "You've searched everywhere but haven't found an idol. Someone else must have already found it.",
@@ -377,6 +375,15 @@ class IdolSystem {
                 }
             }
         );
+    }
+    
+    /**
+     * Get a random item from an array
+     * @param {Array} array - The array to get a random item from
+     * @returns {*} A random item from the array
+     */
+    getRandomItem(array) {
+        return array[Math.floor(Math.random() * array.length)];
     }
     
     /**
